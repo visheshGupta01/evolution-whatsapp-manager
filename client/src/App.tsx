@@ -9,10 +9,13 @@ import { SettingsPage } from './pages/SettingsPage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
+import { useRealtime } from './hooks/use-realtime';
 
 export function App() {
   const [createOpen, setCreateOpen] = useState(false);
   const { refetch } = useSessions();
+  useRealtime();
+
   return <BrowserRouter>
     <Toaster theme="dark" position="bottom-right" richColors />
     <AppShell>
