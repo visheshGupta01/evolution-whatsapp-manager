@@ -198,8 +198,18 @@ export async function listMessages(instance, remoteJid) {
   return filterMessages(asArray(allData), uniqueTargets);
 }
 
-export async function resolveMessageNumber(instance, remoteJid) {
+export async function resolveMessageNumber(instance, remoteJid, remoteJidAlt = '') {
   const target = String(remoteJid || '').trim();
+  const alternate = String(remoteJidAlt || '').trim();
+
+  // Evolution v2.3.7 can reject a LID with { exists:false, jid:"...@lid" }.
+  // When the chat also exposes remoteJidAlt, that is the phone JID we should
+  // use for the sendText endpoint.
+  const explicitPhoneJid = [alternate, target].find((jid) => jid.toLowerCase().endsWith('@s.whatsapp.net'));
+  if (explicitPhoneJid) {
+    return explicitPhoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '');
+  }
+
   const targets = target.toLowerCase().endsWith('@lid')
     ? await findChatJids(instance, target)
     : [target];
