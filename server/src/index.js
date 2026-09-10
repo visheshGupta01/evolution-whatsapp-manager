@@ -6,6 +6,7 @@ import { config, assertConfiguration } from './config.js';
 import { registerMiddleware, errorHandler } from './middleware-v2.js';
 import { healthRouter } from './routes/health.routes.js';
 import { sessionsRouter } from './routes/sessions.routes.js';
+import { chatsRouter } from './routes/chats.routes.js';
 import { webhooksRouter } from './routes/webhooks.routes.js';
 import { initializeSocket } from './services/socket.service.js';
 
@@ -16,11 +17,13 @@ registerMiddleware(app);
 app.get('/api', (_req, res) => res.json({
   ok: true,
   name: 'Evolution WhatsApp Manager API',
-  version: '1.2.0',
+  version: '1.3.0',
   realtime: { transport: 'socket.io', webhook: '/api/webhooks/evolution' },
+  features: { sessions: true, chats: true, messages: true },
 }));
 app.use('/api/health', healthRouter);
 app.use('/api/sessions', sessionsRouter);
+app.use('/api/chats', chatsRouter);
 app.use('/api/webhooks', webhooksRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
