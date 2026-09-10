@@ -98,9 +98,18 @@ export function MessagesPage() {
 
   const submit = async () => {
     const text = draft.trim();
-    if (!instance || !selectedJid || !text || send.isPending) return;
-    try { await send.mutateAsync({ instance, remoteJid: selectedJid, text }); setDraft(''); }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Could not send message'); }
+    if (!instance || !selectedJid || !selectedChat || !text || send.isPending) return;
+    try {
+      await send.mutateAsync({
+        instance,
+        remoteJid: selectedJid,
+        remoteJidAlt: selectedChat.remoteJidAlt,
+        text,
+      });
+      setDraft('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not send message');
+    }
   };
 
   if (!connected.length) return <section className="empty messageEmpty"><MessageCircle size={30}/><h3>No connected WhatsApp session</h3><p>Pair a session first, then your conversations will appear here.</p></section>;
@@ -123,7 +132,7 @@ export function MessagesPage() {
       </aside>
       <section className="thread">
         {selectedChat ? <>
-          <header className="threadHead"><button className="iconBtn backBtn" onClick={() => setMobileThread(false)} aria-label="Back to conversations"><ArrowLeft size={16}/></button><div className="chatAvatar"><MessageCircle size={16}/></div><div><strong>{selectedChat.name}</strong><span>{displayNumber(selectedChat.remoteJid)}</span></div><span className="threadLive"><i/>Live</span></header>
+          <header className="threadHead"><button className="iconBtn backBtn" onClick={() => setMobileThread(false)} aria-label="Back to conversations"><ArrowLeft size={16}/></button><div className="chatAvatar"><MessageCircle size={16}/></div><div><strong>{selectedChat.name}</strong><span>{displayNumber(selectedChat.remoteJidAlt || selectedChat.remoteJid)}</span></div><span className="threadLive"><i/>Live</span></header>
           <div className="messageList" key={`${instance || ''}:${selectedJid || ''}`}>
             {messageLoading ? <MessageSkeletons/> : messages.isError ? <div className="chatState">Could not load message history.<button className="secondary" onClick={() => void messages.refetch()}>Retry</button></div> : messages.data?.length ? <>{messages.data.map((message) => <div className={`bubbleRow ${message.fromMe ? 'mine' : ''}`} key={message.id}><div className="bubble"><p>{message.text || `[${message.messageType}]`}</p><span>{formatTime(message.timestamp)} {message.fromMe && <CheckCheck size={12}/>}</span></div></div>)}<div ref={messagesEndRef}/></> : <div className="threadEmpty"><MessageCircle size={26}/><strong>No messages yet</strong><span>Send the first message in this conversation.</span></div>}
           </div>
