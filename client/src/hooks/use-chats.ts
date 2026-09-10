@@ -20,9 +20,6 @@ export function useMessages(instance: string | null, remoteJid: string | null) {
     queryFn: () => chatsApi.messages(instance as string, remoteJid as string),
     enabled: Boolean(instance && remoteJid),
     staleTime: 2_000,
-    // Realtime normally refreshes this query immediately. Polling provides a
-    // reliable fallback when Evolution receives a message but its webhook
-    // event is delayed or unavailable.
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -32,8 +29,8 @@ export function useMessages(instance: string | null, remoteJid: string | null) {
 export function useSendMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ instance, remoteJid, text }: { instance: string; remoteJid: string; text: string }) =>
-      chatsApi.send(instance, remoteJid, text),
+    mutationFn: ({ instance, remoteJid, remoteJidAlt, text }: { instance: string; remoteJid: string; remoteJidAlt?: string; text: string }) =>
+      chatsApi.send(instance, remoteJidAlt?.trim() || remoteJid, text),
     onSuccess: (_message, variables) => {
       void queryClient.invalidateQueries({ queryKey: messagesQueryKey(variables.instance, variables.remoteJid) });
       void queryClient.invalidateQueries({ queryKey: chatsQueryKey(variables.instance) });
