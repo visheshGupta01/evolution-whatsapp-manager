@@ -1,134 +1,39 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, CheckCircle2, CircleSlash2, Link2, MessageSquareText, Plus, RefreshCw, Search, Settings2, Smartphone, Trash2, Wifi, X, Zap } from 'lucide-react';
+import {useCallback,useEffect,useMemo,useState} from 'react';
+import {Activity,CheckCircle2,CircleSlash2,Link2,LogOut,MessageCircle,MessageSquareText,Plus,RefreshCw,Search,Send,Server,Settings2,Smartphone,Trash2,Users,Wifi,X,Zap} from 'lucide-react';
 
-type Session = {
-  instanceName?: string;
-  status?: string;
-  state?: string;
-  ownerJid?: string;
-  profileName?: string;
-  number?: string;
-  tokenKnown?: boolean;
-};
+type Session={instanceName?:string;status?:string;state?:string;ownerJid?:string;profileName?:string;number?:string;tokenKnown?:boolean};
+type Api={base64?:string;qrcode?:string;qr?:string;code?:string;message?:string};
+const API=String(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+async function req<T>(p:string,i?:RequestInit):Promise<T>{const r=await fetch(API+p,{...i,headers:{'Content-Type':'application/json',...(i?.headers||{})}});const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b?.message||`Request failed (${r.status})`);return b}
+const state=(s:Session)=>s.state||s.status||'unknown';const online=(s:Session)=>['open','connected','online'].includes(state(s).toLowerCase());const pending=(s:Session)=>['connecting','pending','qr'].includes(state(s).toLowerCase());const num=(s:Session)=>s.number||s.ownerJid?.split('@')[0]||'Not paired';
 
-type ApiResult = { message?: string; qrcode?: string; base64?: string; code?: string; qr?: string; [key: string]: unknown };
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API}${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.message || `Request failed (${response.status})`);
-  return body;
-}
-
-const stateLabel = (session: Session) => session.state || session.status || 'unknown';
-const isConnected = (session: Session) => ['open', 'connected', 'online'].includes(stateLabel(session).toLowerCase());
-
-export function App() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all'|'connected'|'offline'>('all');
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [qr, setQr] = useState<{ name: string; image: string } | null>(null);
-  const [messageSession, setMessageSession] = useState<Session | null>(null);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const data = await request<Session[]>('/sessions');
-      setSessions(data.filter(Boolean));
-      setError('');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load sessions'); }
-    finally { if (!silent) setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); const timer = setInterval(() => load(true), 8000); return () => clearInterval(timer); }, [load]);
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2800); return () => clearTimeout(t); }, [toast]);
-
-  const filtered = useMemo(() => sessions.filter((s) => {
-    const name = s.instanceName || '';
-    const matchesSearch = name.toLowerCase().includes(search.toLowerCase()) || String(s.number || '').includes(search);
-    const matchesFilter = filter === 'all' || (filter === 'connected' ? isConnected(s) : !isConnected(s));
-    return matchesSearch && matchesFilter;
-  }), [sessions, search, filter]);
-
-  const connectedCount = sessions.filter(isConnected).length;
-  const connectingCount = sessions.filter(s => ['connecting','pending'].includes(stateLabel(s).toLowerCase())).length;
-
-  const action = async (name: string, fn: () => Promise<unknown>, success: string, refresh = true) => {
-    setBusy(name); setError('');
-    try { await fn(); setToast(success); if (refresh) await load(true); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Action failed'); }
-    finally { setBusy(null); }
-  };
-
-  const connect = async (session: Session) => {
-    const name = session.instanceName!;
-    setBusy(name); setError('');
-    try {
-      const data = await request<ApiResult>(`/sessions/${encodeURIComponent(name)}/connect`);
-      const image = String(data.base64 || data.qrcode || data.code || data.qr || '');
-      if (image.startsWith('data:image')) setQr({ name, image });
-      else if (image) setToast('QR payload received. Scan it from the connection window.');
-      else setToast('Connection request sent.');
-      await load(true);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not connect'); }
-    finally { setBusy(null); }
-  };
-
-  const createSession = async () => {
-    const name = newName.trim().toLowerCase();
-    if (!name) return;
-    await action(`create:${name}`, async () => { await request(`/sessions`, { method: 'POST', body: JSON.stringify({ instanceName: name }) }); }, 'Session created');
-    setNewName(''); setCreateOpen(false);
-  };
-
-  const remove = async (session: Session) => {
-    if (!window.confirm(`Delete the WhatsApp session “${session.instanceName}”? This permanently removes the Evolution instance.`)) return;
-    await action(session.instanceName!, () => request(`/sessions/${encodeURIComponent(session.instanceName!)}`, { method: 'DELETE' }), 'Session deleted');
-  };
-
-  return <div className="shell">
-    <header className="topbar">
-      <div className="brand"><div className="brandMark"><Zap size={18}/></div><div><strong>Evolution Manager</strong><span>Multi-session WhatsApp control</span></div></div>
-      <div className="topActions"><button className="iconBtn" title="Refresh" onClick={() => load()}><RefreshCw size={18}/></button><button className="primary" onClick={() => setCreateOpen(true)}><Plus size={17}/> Add session</button></div>
-    </header>
-
-    <main>
-      {error && <div className="alert"><CircleSlash2 size={17}/><span>{error}</span><button onClick={() => setError('')}><X size={16}/></button></div>}
-      <section className="hero"><div><p className="eyebrow">CONTROL CENTER</p><h1>WhatsApp sessions, all in one place.</h1><p>Connect, monitor, and operate multiple Evolution API instances without exposing your global API key to the browser.</p></div><div className="heroBadge"><Wifi size={16}/><span>{connectedCount} online</span></div></section>
-
-      <section className="stats">
-        <Stat icon={<Smartphone size={18}/>} label="Total sessions" value={sessions.length} note="Evolution instances" />
-        <Stat icon={<CheckCircle2 size={18}/>} label="Connected" value={connectedCount} note="Ready for messaging" />
-        <Stat icon={<Activity size={18}/>} label="Connecting" value={connectingCount} note="Waiting for pairing" />
-        <Stat icon={<Settings2 size={18}/>} label="Polling" value="8s" note="Automatic status refresh" />
-      </section>
-
-      <section className="toolbar"><div className="searchBox"><Search size={17}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search sessions or numbers…"/></div><div className="segmented">{(['all','connected','offline'] as const).map(key => <button key={key} className={filter === key ? 'active' : ''} onClick={() => setFilter(key)}>{key === 'all' ? 'All' : key === 'connected' ? 'Connected' : 'Offline'}</button>)}</div></section>
-
-      {loading ? <div className="loading">Loading Evolution sessions…</div> : filtered.length === 0 ? <Empty onAdd={() => setCreateOpen(true)} hasSessions={sessions.length > 0}/> : <div className="grid">{filtered.map(session => <SessionCard key={session.instanceName} session={session} busy={busy === session.instanceName} onConnect={() => connect(session)} onRestart={() => action(session.instanceName!, () => request(`/sessions/${encodeURIComponent(session.instanceName!)}/restart`, { method: 'POST' }), 'Restart requested')} onLogout={() => action(session.instanceName!, () => request(`/sessions/${encodeURIComponent(session.instanceName!)}/disconnect`, { method: 'POST' }), 'Session logged out')} onDelete={() => remove(session)} onMessage={() => setMessageSession(session)} />)}</div>}
-    </main>
-
-    {createOpen && <Modal title="Add WhatsApp session" onClose={() => setCreateOpen(false)}><div className="form"><label>Instance name<input autoFocus value={newName} onChange={e => setNewName(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase())} placeholder="sales-01"/></label><p>Use lowercase letters, numbers, hyphens, or underscores. A unique instance token is generated server-side.</p><button className="primary full" disabled={!newName.trim() || busy !== null} onClick={createSession}>{busy?.startsWith('create:') ? 'Creating…' : 'Create session'}</button></div></Modal>}
-    {qr && <Modal title={`Connect ${qr.name}`} onClose={() => setQr(null)}><div className="qrWrap"><img src={qr.image} alt="WhatsApp QR code"/><strong>Scan with WhatsApp → Linked devices</strong><span>The dashboard will keep polling the session state.</span></div></Modal>}
-    {messageSession && <MessageModal session={messageSession} onClose={() => setMessageSession(null)} onSent={() => { setMessageSession(null); setToast('Message sent'); }}/>} 
-    {toast && <div className="toast"><CheckCircle2 size={16}/>{toast}</div>}
-  </div>;
-}
-
-function Stat({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: React.ReactNode; note: string }) { return <div className="stat"><div className="statIcon">{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{note}</small></div></div> }
-function Empty({ onAdd, hasSessions }: { onAdd: () => void; hasSessions: boolean }) { return <div className="empty"><div className="emptyIcon"><MessageSquareText size={24}/></div><h3>{hasSessions ? 'No matching sessions' : 'No WhatsApp sessions yet'}</h3><p>{hasSessions ? 'Try a different search or filter.' : 'Create your first Evolution API instance and pair it with WhatsApp.'}</p>{!hasSessions && <button className="primary" onClick={onAdd}><Plus size={16}/> Create first session</button>}</div> }
-
-function SessionCard({ session, busy, onConnect, onRestart, onLogout, onDelete, onMessage }: { session: Session; busy: boolean; onConnect: () => void; onRestart: () => void; onLogout: () => void; onDelete: () => void; onMessage: () => void }) {
-  const connected = isConnected(session); const state = stateLabel(session).toLowerCase();
-  return <article className="card"><div className="cardTop"><div className="avatar"><Smartphone size={19}/></div><div className="sessionTitle"><strong>{session.instanceName || 'Unnamed'}</strong><span>{session.profileName || session.number || session.ownerJid || 'Awaiting WhatsApp pairing'}</span></div><span className={`status ${connected ? 'online' : state === 'connecting' ? 'pending' : 'offline'}`}><i/>{connected ? 'Connected' : state === 'connecting' ? 'Connecting' : state || 'Offline'}</span></div><div className="divider"/><div className="meta"><Meta label="Instance" value={session.instanceName || '—'}/><Meta label="Number" value={session.number || session.ownerJid?.split('@')[0] || '—'}/><Meta label="Token" value={session.tokenKnown ? 'Stored server-side' : 'Managed by Evolution'}/></div><div className="cardActions"><button disabled={busy} onClick={onConnect}><Link2 size={15}/>{connected ? 'View status' : 'Connect'}</button>{connected && <button disabled={busy} onClick={onMessage}><MessageSquareText size={15}/> Message</button>}<button disabled={busy} onClick={onRestart}><RefreshCw size={15}/> Restart</button><button disabled={busy} onClick={onLogout}><Wifi size={15}/> Logout</button><button className="danger" disabled={busy} onClick={onDelete}><Trash2 size={15}/></button></div></article>
-}
-function Meta({label,value}:{label:string;value:string}) { return <div><small>{label}</small><span>{value}</span></div> }
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div className="modalBackdrop" onMouseDown={e => { if (e.currentTarget === e.target) onClose(); }}><div className="modal"><div className="modalHead"><strong>{title}</strong><button className="iconBtn" onClick={onClose}><X size={18}/></button></div>{children}</div></div> }
-function MessageModal({ session, onClose, onSent }: { session: Session; onClose: () => void; onSent: () => void }) { const [number, setNumber] = useState(''); const [text, setText] = useState('Hello from Evolution Manager 👋'); const [sending,setSending]=useState(false); const [error,setError]=useState(''); const send=async()=>{setSending(true);setError('');try{await request(`/sessions/${encodeURIComponent(session.instanceName!)}/send-text`,{method:'POST',body:JSON.stringify({number,text})});onSent();}catch(e){setError(e instanceof Error?e.message:'Could not send message');}finally{setSending(false)}}; return <Modal title={`Send from ${session.instanceName}`} onClose={onClose}><div className="form"><label>Recipient number<input value={number} onChange={e=>setNumber(e.target.value)} placeholder="919876543210"/></label><label>Message<textarea rows={5} value={text} onChange={e=>setText(e.target.value)}/></label>{error&&<div className="fieldError">{error}</div>}<button className="primary full" disabled={!number.trim()||!text.trim()||sending} onClick={send}>{sending?'Sending…':'Send message'}</button></div></Modal> }
+export function App(){
+ const[sessions,setSessions]=useState<Session[]>([]),[view,setView]=useState<'overview'|'sessions'|'messages'|'settings'>('overview'),[q,setQ]=useState(''),[filter,setFilter]=useState<'all'|'connected'|'pending'|'offline'>('all'),[loading,setLoading]=useState(true),[busy,setBusy]=useState(''),[error,setError]=useState(''),[toast,setToast]=useState(''),[create,setCreate]=useState(false),[name,setName]=useState(''),[qr,setQr]=useState<{name:string;image:string}|null>(null),[message,setMessage]=useState<Session|null>(null),[detail,setDetail]=useState<Session|null>(null);
+ const load=useCallback(async()=>{setLoading(true);try{setSessions(await req<Session[]>('/sessions'))}catch(e){setError(e instanceof Error?e.message:'Could not load sessions')}finally{setLoading(false)}},[]);
+ useEffect(()=>{void load();const t=setInterval(()=>void load(),8000);return()=>clearInterval(t)},[load]);
+ const notify=(x:string)=>{setToast(x);setTimeout(()=>setToast(''),2500)};
+ const action=async(id:string,fn:()=>Promise<unknown>,ok:string)=>{setBusy(id);setError('');try{await fn();notify(ok);await load()}catch(e){setError(e instanceof Error?e.message:'Action failed')}finally{setBusy('')}};
+ const filtered=useMemo(()=>sessions.filter(s=>{const x=q.toLowerCase();const match=!x||String(s.instanceName||'').toLowerCase().includes(x)||num(s).includes(x);const f=filter==='all'||(filter==='connected'&&online(s))||(filter==='pending'&&pending(s))||(filter==='offline'&&!online(s)&&!pending(s));return match&&f}),[sessions,q,filter]);
+ async function connect(s:Session){const n=s.instanceName!;setBusy(n);try{const d=await req<Api>(`/sessions/${encodeURIComponent(n)}/connect`);const x=String(d.base64||d.qrcode||d.qr||d.code||'');if(x)setQr({name:n,image:x.startsWith('data:image')?x:`data:image/png;base64,${x}`});else notify('Connection request sent')}catch(e){setError(e instanceof Error?e.message:'Could not connect')}finally{setBusy('')}}
+ async function createSession(){const n=name.trim().toLowerCase();if(!n)return;await action('create',()=>req('/sessions',{method:'POST',body:JSON.stringify({instanceName:n})}),'Session created');setName('');setCreate(false);setView('sessions')}
+ async function remove(s:Session){if(!confirm(`Delete ${s.instanceName}?`))return;await action(s.instanceName!,()=>req(`/sessions/${encodeURIComponent(s.instanceName!)}`,{method:'DELETE'}),'Session deleted');setDetail(null)}
+ const nav=(v:typeof view)=>setView(v);
+ return <div className="shell"><header className="topbar"><div className="brand"><div className="brandMark"><Zap size={18}/></div><div><strong>Evolution Manager</strong><span>WhatsApp control center</span></div></div><div className="topActions"><button className="iconBtn" onClick={()=>void load()}><RefreshCw size={17}/></button><button className="primary" onClick={()=>setCreate(true)}><Plus size={16}/> Add session</button></div></header><main>
+ {error&&<div className="alert"><CircleSlash2 size={17}/><span>{error}</span><button onClick={()=>setError('')}><X size={15}/></button></div>}
+ <nav style={{display:'flex',gap:6,margin:'20px 0',flexWrap:'wrap'}}>{[['overview','Overview',Activity],['sessions','Sessions',Smartphone],['messages','Messages',MessageCircle],['settings','Settings',Settings2]].map(([v,label,Icon])=><button key={String(v)} className={`segmentedBtn ${view===v?'active':''}`} style={{border:'1px solid #2a323d',background:view===v?'#232a34':'#11161d',color:view===v?'#fff':'#8c97a6',borderRadius:9,padding:'8px 12px',display:'flex',gap:6,alignItems:'center'}} onClick={()=>nav(v as typeof view)}><Icon size={14}/>{String(label)}</button>)}</nav>
+ {view==='overview'&&<><section className="hero"><div><p className="eyebrow">CONTROL CENTER</p><h1>WhatsApp sessions, all in one place.</h1><p>Connect, monitor and operate multiple Evolution API instances without exposing your global API key.</p></div><div className="heroBadge"><Wifi size={15}/>{sessions.filter(online).length} online</div></section><section className="stats"><Stat icon={<Smartphone size={18}/>} label="Total" value={sessions.length} note="Evolution instances"/><Stat icon={<CheckCircle2 size={18}/>} label="Connected" value={sessions.filter(online).length} note="Ready to message"/><Stat icon={<Activity size={18}/>} label="Connecting" value={sessions.filter(pending).length} note="Waiting for pairing"/><Stat icon={<Wifi size={18}/>} label="Offline" value={sessions.filter(s=>!online(s)&&!pending(s)).length} note="Needs attention"/></section><h2>Recent sessions</h2>{loading?<div className="loading">Loading…</div>:sessions.length?<div className="grid">{sessions.slice(0,6).map(s=><Card key={s.instanceName} s={s} busy={busy===s.instanceName} connect={()=>connect(s)} message={()=>setMessage(s)} detail={()=>setDetail(s)}/>)}</div>:<Empty create={()=>setCreate(true)}/>}</>}
+ {view==='sessions'&&<><div className="hero"><div><p className="eyebrow">WHATSAPP</p><h1>Sessions</h1><p>Manage every Evolution API instance.</p></div><button className="primary" onClick={()=>setCreate(true)}><Plus size={16}/> Add session</button></div><section className="toolbar"><div className="searchBox"><Search size={16}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search instances or numbers…"/></div><div className="segmented">{(['all','connected','pending','offline'] as const).map(f=><button className={filter===f?'active':''} key={f} onClick={()=>setFilter(f)}>{f[0].toUpperCase()+f.slice(1)}</button>)}</div></section>{loading?<div className="loading">Loading…</div>:filtered.length?<div className="grid">{filtered.map(s=><Card key={s.instanceName} s={s} busy={busy===s.instanceName} connect={()=>connect(s)} message={()=>setMessage(s)} detail={()=>setDetail(s)} restart={()=>action(s.instanceName!,()=>req(`/sessions/${encodeURIComponent(s.instanceName!)}/restart`,{method:'POST'}),'Restart requested')} logout={()=>action(s.instanceName!,()=>req(`/sessions/${encodeURIComponent(s.instanceName!)}/disconnect`,{method:'POST'}),'Logged out')} remove={()=>remove(s)}/>)}</div>:<Empty create={()=>setCreate(true)} search/>}</>}
+ {view==='messages'&&<><div className="hero"><div><p className="eyebrow">COMMUNICATIONS</p><h1>Messages</h1><p>Send WhatsApp messages from connected sessions.</p></div></div>{sessions.filter(online).length?<div className="grid">{sessions.filter(online).map(s=><div className="card" key={s.instanceName}><div className="cardTop"><div className="avatar"><MessageCircle size={19}/></div><div className="sessionTitle"><strong>{s.instanceName}</strong><span>{num(s)}</span></div></div><div className="cardActions"><button onClick={()=>setMessage(s)}><Send size={15}/> Compose message</button></div></div>)}</div>:<Empty create={()=>setView('sessions')}/>}</>}
+ {view==='settings'&&<><div className="hero"><div><p className="eyebrow">SYSTEM</p><h1>Settings</h1><p>Connection and security information.</p></div></div><div className="grid"><div className="card"><h3><Server size={17}/> Evolution API</h3><div className="meta"><Meta label="Endpoint" value={API}/><Meta label="Sessions" value={String(sessions.length)}/><Meta label="Polling" value="8 seconds"/></div></div><div className="card"><h3><Settings2 size={17}/> Security</h3><p style={{color:'#8d98a7',fontSize:13,lineHeight:1.7}}>Your global Evolution API key is used only by the Express backend and is never placed in frontend code.</p></div></div></>}
+ </main>
+ {create&&<Modal title="Create WhatsApp session" close={()=>setCreate(false)}><div className="form"><label>Instance name<input autoFocus value={name} onChange={e=>setName(e.target.value.replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase())} placeholder="sales-01"/></label><p>Creates a WHATSAPP-BAILEYS instance with QR pairing.</p><button className="primary full" disabled={!name.trim()||!!busy} onClick={()=>void createSession()}>{busy==='create'?'Creating…':'Create session'}</button></div></Modal>}
+ {qr&&<Modal title={`Connect · ${qr.name}`} close={()=>setQr(null)}><div className="qrWrap"><img src={qr.image} alt="WhatsApp QR code"/><strong>Scan with WhatsApp → Linked devices</strong><span>Keep this window open while pairing.</span></div></Modal>}
+ {message&&<MessageModal s={message} close={()=>setMessage(null)} sent={()=>{setMessage(null);notify('Message sent')}}/>}
+ {detail&&<Modal title={detail.instanceName||'Session'} close={()=>setDetail(null)}><div className="meta"><Meta label="Number" value={num(detail)}/><Meta label="State" value={state(detail)}/><Meta label="Owner" value={detail.ownerJid||'—'}/></div><div className="cardActions" style={{marginTop:18}}><button onClick={()=>connect(detail)}><Link2 size={15}/> Connect</button><button onClick={()=>void action(detail.instanceName!,()=>req(`/sessions/${encodeURIComponent(detail.instanceName!)}/restart`,{method:'POST'}),'Restart requested')}><RefreshCw size={15}/> Restart</button><button onClick={()=>void action(detail.instanceName!,()=>req(`/sessions/${encodeURIComponent(detail.instanceName!)}/disconnect`,{method:'POST'}),'Logged out')}><LogOut size={15}/> Logout</button><button className="danger" onClick={()=>void remove(detail)}><Trash2 size={15}/> Delete</button></div></Modal>}
+ {toast&&<div className="toast"><CheckCircle2 size={15}/>{toast}</div>}</div>}
+function Stat({icon,label,value,note}:{icon:React.ReactNode;label:string;value:number|string;note:string}){return <div className="stat"><div className="statIcon">{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{note}</small></div></div>}
+function Meta({label,value}:{label:string;value:string}){return <div><small>{label}</small><span>{value}</span></div>}
+function Card({s,busy,connect,message,detail,restart,logout,remove}:{s:Session;busy:boolean;connect:()=>void;message:()=>void;detail:()=>void;restart?:()=>void;logout?:()=>void;remove?:()=>void}){const c=online(s),p=pending(s);return <article className="card"><div className="cardTop"><button className="avatar" onClick={detail}><Smartphone size={19}/></button><div className="sessionTitle"><strong>{s.instanceName||'Unnamed'}</strong><span>{s.profileName||num(s)}</span></div><span className={`status ${c?'online':p?'pending':'offline'}`}><i/>{c?'Connected':p?'Connecting':state(s)}</span></div><div className="divider"/><div className="meta"><Meta label="Number" value={num(s)}/><Meta label="State" value={state(s)}/><Meta label="Token" value={s.tokenKnown?'Server-side':'Evolution'}/></div><div className="cardActions"><button disabled={busy} onClick={connect}><Link2 size={14}/>{c?'Status':'Connect'}</button>{c&&<button disabled={busy} onClick={message}><MessageSquareText size={14}/>Message</button>}<button onClick={detail}>Details</button></div>{restart&&<div className="cardActions"><button disabled={busy} onClick={restart}><RefreshCw size={14}/>Restart</button><button disabled={busy} onClick={logout}><LogOut size={14}/>Logout</button><button className="danger" disabled={busy} onClick={remove}><Trash2 size={14}/>Delete</button></div>}</article>}
+function Empty({create,search=false}:{create:()=>void;search?:boolean}){return <div className="empty"><div className="emptyIcon"><MessageSquareText size={23}/></div><h3>{search?'No matching sessions':'No WhatsApp sessions yet'}</h3><p>{search?'Try another search or filter.':'Create your first Evolution instance and pair it with WhatsApp.'}</p><button className="primary" onClick={create}>{search?'View sessions':'Create session'}</button></div>}
+function Modal({title,sub,close,children}:{title:string;sub?:string;close:()=>void;children:React.ReactNode}){return <div className="modalBackdrop" onMouseDown={e=>{if(e.currentTarget===e.target)close()}}><div className="modal"><div className="modalHead"><div><strong>{title}</strong>{sub&&<p>{sub}</p>}</div><button className="iconBtn" onClick={close}><X size={17}/></button></div>{children}</div></div>}
+function MessageModal({s,close,sent}:{s:Session;close:()=>void;sent:()=>void}){const[n,setN]=useState(''),[t,setT]=useState(''),[sending,setSending]=useState(false),[e,setE]=useState('');async function send(){setSending(true);setE('');try{await req(`/sessions/${encodeURIComponent(s.instanceName!)}/send-text`,{method:'POST',body:JSON.stringify({number:n,text:t})});sent()}catch(x){setE(x instanceof Error?x.message:'Could not send message')}finally{setSending(false)}}return <Modal title={`Send from ${s.instanceName}`} close={close}><div className="form"><label>Recipient number<input value={n} onChange={x=>setN(x.target.value)} placeholder="919876543210"/></label><label>Message<textarea rows={5} value={t} onChange={x=>setT(x.target.value)} placeholder="Type your message…"/></label>{e&&<div className="fieldError">{e}</div>}<button className="primary full" disabled={!n.trim()||!t.trim()||sending} onClick={()=>void send()}><Send size={15}/>{sending?'Sending…':'Send message'}</button></div></Modal>}
