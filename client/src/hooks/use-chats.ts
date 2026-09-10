@@ -30,7 +30,7 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ instance, remoteJid, remoteJidAlt, text }: { instance: string; remoteJid: string; remoteJidAlt?: string; text: string }) =>
-      chatsApi.send(instance, remoteJidAlt?.trim() || remoteJid, text),
+      chatsApi.send(instance, remoteJid, text, remoteJidAlt),
     onSuccess: (_message, variables) => {
       void queryClient.invalidateQueries({ queryKey: messagesQueryKey(variables.instance, variables.remoteJid) });
       void queryClient.invalidateQueries({ queryKey: chatsQueryKey(variables.instance) });
