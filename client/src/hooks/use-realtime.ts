@@ -7,9 +7,16 @@ import { chatsQueryKey, messagesQueryKey } from './use-chats';
 const SESSION_EVENTS = new Set(['connection.update', 'qrcode.updated', 'application.startup']);
 const MESSAGE_EVENTS = new Set(['messages.upsert', 'messages.update', 'messages.delete', 'send.message']);
 
-function remoteJidFrom(event: RealtimeEvent) {
+function messageJids(event: RealtimeEvent) {
   const data = event.data as any;
-  return data?.key?.remoteJid || data?.remoteJid || data?.message?.key?.remoteJid || null;
+  const key = data?.key || data?.message?.key || {};
+  const message = data?.message || data;
+  return [...new Set([
+    key?.remoteJid,
+    key?.remoteJidAlt,
+    message?.remoteJid,
+    message?.remoteJidAlt,
+  ].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())))];
 }
 
 export function useRealtime() {
@@ -22,10 +29,17 @@ export function useRealtime() {
       }
 
       if (MESSAGE_EVENTS.has(event.event) && event.instance) {
+        // Keep the conversation list fresh immediately when Evolution emits
+        // an incoming/outgoing message or message-state update.
         void queryClient.invalidateQueries({ queryKey: chatsQueryKey(event.instance) });
-        const remoteJid = remoteJidFrom(event);
-        if (remoteJid) {
-          void queryClient.invalidateQueries({ queryKey: messagesQueryKey(event.instance, remoteJid) });
+
+        // WhatsApp can represent the same conversation with a LID and a
+        // phone JID. Invalidate every JID carried by the event so the active
+        // thread refreshes regardless of which identifier Evolution emits.
+        for (const remoteJid of messageJids(event)) {
+          void queryClient.invalidateQueries({
+            queryKey: messagesQueryKey(event.instance, remoteJid),
+          });
         }
       }
     };
