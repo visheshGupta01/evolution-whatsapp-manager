@@ -69,7 +69,33 @@ export async function createInstance(instanceName) {
   const { data } = await request({
     method: 'POST',
     url: '/instance/create',
-    data: { instanceName, integration: 'WHATSAPP-BAILEYS', token, qrcode: true },
+    data: {
+      instanceName,
+      integration: 'WHATSAPP-BAILEYS',
+      token,
+      qrcode: true,
+      webhook: {
+        url: config.webhookUrl,
+        byEvents: false,
+        base64: false,
+        events: [
+          'APPLICATION_STARTUP',
+          'QRCODE_UPDATED',
+          'CONNECTION_UPDATE',
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
+          'MESSAGES_DELETE',
+          'SEND_MESSAGE',
+          'CONTACTS_UPDATE',
+          'CHATS_UPDATE',
+          'CHATS_DELETE',
+          'GROUPS_UPSERT',
+          'GROUP_UPDATE',
+          'GROUP_PARTICIPANTS_UPDATE',
+          'PRESENCE_UPDATE',
+        ],
+      },
+    },
   });
   tokens.set(instanceName, token);
   return { instanceName, tokenKnown: true, ...data };
