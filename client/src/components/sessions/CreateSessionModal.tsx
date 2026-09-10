@@ -1,0 +1,5 @@
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { useSessionMutation } from '../../hooks/use-sessions';
+import { Modal } from '../ui/Modal';
+export function CreateSessionModal({ close }: { close: () => void }) { const [name,setName]=useState(''); const mutation=useSessionMutation().create; const submit=async()=>{if(!name.trim())return;try{await mutation.mutateAsync(name.trim().toLowerCase());toast.success('Session created');close()}catch(e){toast.error(e instanceof Error?e.message:'Could not create session')}};return <Modal title="Create WhatsApp session" close={close}><div className="form"><label>Instance name<input autoFocus value={name} onChange={e=>setName(e.target.value.replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase())} placeholder="sales-01"/></label><p>Creates a WHATSAPP-BAILEYS instance with QR pairing.</p><button className="primary full" disabled={!name.trim()||mutation.isPending} onClick={()=>void submit()}>{mutation.isPending?'Creating…':'Create session'}</button></div></Modal>; }
