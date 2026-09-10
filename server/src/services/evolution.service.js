@@ -19,11 +19,27 @@ export class EvolutionError extends Error {
   }
 }
 
+function formatErrorValue(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    return value.flat(Infinity).map(formatErrorValue).filter(Boolean).join(', ');
+  }
+  if (value && typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.error === 'string') return value.error;
+    if (typeof value.jid === 'string' && value.exists === false) {
+      return `WhatsApp recipient does not exist: ${value.jid}`;
+    }
+    try { return JSON.stringify(value); } catch { return '[object]'; }
+  }
+  return value == null ? '' : String(value);
+}
+
 function messageFrom(error) {
   const data = error?.response?.data;
-  if (Array.isArray(data?.response?.message)) return data.response.message.join(', ');
-  if (Array.isArray(data?.message)) return data.message.join(', ');
-  if (typeof data?.message === 'string') return data.message;
+  const value = data?.response?.message ?? data?.message ?? data?.error;
+  const formatted = formatErrorValue(value);
+  if (formatted) return formatted;
   if (typeof data === 'string') return data;
   if (error?.code === 'ECONNABORTED') return 'Evolution API request timed out';
   if (error?.code === 'ECONNREFUSED') return 'Evolution API is unreachable';
@@ -89,11 +105,6 @@ export async function listInstances() {
     const name = instance.instanceName || item?.instanceName || item?.name;
     if (!name) return null;
 
-    // fetchInstances on Evolution v2 may return connectionStatus as a STRING
-    // (`open`, `connecting`, `close`). The previous normalizer treated that
-    // string like an object and therefore silently converted a connected
-    // instance into `unknown`. Prefer the dedicated live endpoint when it is
-    // available, but always keep the fetchInstances state as a fallback.
     try {
       const { data: state } = await request({
         method: 'GET',
