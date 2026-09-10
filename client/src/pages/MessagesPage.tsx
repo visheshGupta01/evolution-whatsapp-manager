@@ -3,7 +3,7 @@ import { ArrowLeft, CheckCheck, MessageCircle, RefreshCw, Search, Send } from 'l
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSessions } from '../hooks/use-sessions';
-import { chatsQueryKey, messagesQueryKey, useChats, useMessages, useSendMessage } from '../hooks/use-chats';
+import { messagesQueryKey, useChats, useMessages, useSendMessage } from '../hooks/use-chats';
 import { useAppStore } from '../stores/app-store';
 import '../styles/inbox.css';
 
