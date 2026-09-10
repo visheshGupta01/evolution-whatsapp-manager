@@ -166,8 +166,6 @@ async function findChatJids(instance, remoteJid) {
   const target = jidVariants(remoteJid);
   const found = [];
 
-  // Evolution 2.3.7 exposes a dedicated lookup endpoint. It is more reliable
-  // for LID chats than assuming findChats always includes remoteJidAlt.
   try {
     const encodedInstance = encodeURIComponent(instance);
     const encodedRemoteJid = encodeURIComponent(remoteJid);
@@ -177,8 +175,7 @@ async function findChatJids(instance, remoteJid) {
     );
     found.push(...asArray(direct).flatMap(chatJidCandidates));
   } catch {
-    // Fall back to the chat list below. Older Evolution builds may not expose
-    // the dedicated lookup endpoint.
+    // Older Evolution builds may not expose the dedicated lookup endpoint.
   }
 
   try {
@@ -189,6 +186,23 @@ async function findChatJids(instance, remoteJid) {
     if (chat) found.push(...chatJidCandidates(chat));
   } catch {
     // Keep any JIDs found through the dedicated lookup endpoint.
+  }
+
+  // Last resort: incoming message records frequently contain both fields even
+  // when findChats omits remoteJidAlt. This is the most reliable LID -> PN map
+  // for an existing conversation on Evolution 2.3.7.
+  if (!found.some((jid) => String(jid).toLowerCase().endsWith('@s.whatsapp.net'))) {
+    try {
+      const data = await request('POST', `/chat/findMessages/${encodeURIComponent(instance)}`, {});
+      const messages = asArray(data);
+      for (const message of messages) {
+        const normalized = normalizeMessage(message);
+        if (!messagesMatchTargets(normalized, [remoteJid])) continue;
+        found.push(normalized.remoteJid, normalized.remoteJidAlt);
+      }
+    } catch {
+      // If history is unavailable, the caller will return a clear mapping error.
+    }
   }
 
   return [...new Set([remoteJid, ...found].filter(Boolean))];
@@ -233,7 +247,7 @@ export async function resolveMessageNumber(instance, remoteJid, remoteJidAlt = '
     return explicitPhoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '');
   }
 
-  const targets = target.toLowerCase().endsWith('@lid')
+  const targets = target.toLowerCase().endsWith('@lid'
     ? await findChatJids(instance, target)
     : [target];
 
