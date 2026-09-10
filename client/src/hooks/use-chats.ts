@@ -31,9 +31,22 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: ({ instance, remoteJid, remoteJidAlt, text }: { instance: string; remoteJid: string; remoteJidAlt?: string; text: string }) =>
       chatsApi.send(instance, remoteJid, text, remoteJidAlt),
-    onSuccess: (_message, variables) => {
-      void queryClient.invalidateQueries({ queryKey: messagesQueryKey(variables.instance, variables.remoteJid) });
-      void queryClient.invalidateQueries({ queryKey: chatsQueryKey(variables.instance) });
+    onSuccess: async (_message, variables) => {
+      const messageKey = messagesQueryKey(variables.instance, variables.remoteJid);
+      const chatKey = chatsQueryKey(variables.instance);
+
+      // Invalidate first so React Query knows the cached conversation is stale.
+      await queryClient.invalidateQueries({ queryKey: messageKey });
+      await queryClient.invalidateQueries({ queryKey: chatKey });
+
+      // Immediately refetch the active conversation instead of waiting for the
+      // 5-second polling interval. This is important when Evolution accepts a
+      // send but its webhook arrives slightly later (or is not configured on
+      // an already-existing Evolution instance).
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: messageKey, type: 'active' }),
+        queryClient.refetchQueries({ queryKey: chatKey, type: 'active' }),
+      ]);
     },
   });
 }
