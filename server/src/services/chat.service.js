@@ -61,13 +61,25 @@ function textFromMessage(message) {
     || '';
 }
 
+function chatAlternateJid(chat) {
+  return chat?.remoteJidAlt
+    || chat?.key?.remoteJidAlt
+    || chat?.jidAlt
+    || chat?.altJid
+    || chat?.phoneJid
+    || chat?.numberJid
+    || '';
+}
+
 export function normalizeChat(chat) {
   const remoteJid = chat?.remoteJid || chat?.id || chat?.jid || chat?.key?.remoteJid || '';
+  const remoteJidAlt = chatAlternateJid(chat);
   const name = chat?.name || chat?.pushName || chat?.formattedName || chat?.subject || remoteJid.split('@')[0] || 'Unknown';
   const last = chat?.lastMessage || chat?.lastMessageMessage || chat?.message || {};
   return {
     id: String(chat?.id || remoteJid),
     remoteJid: String(remoteJid),
+    remoteJidAlt: String(remoteJidAlt),
     name: String(name),
     unreadCount: Number(chat?.unreadCount || chat?.unread || 0),
     archived: Boolean(chat?.archived),
@@ -105,8 +117,8 @@ function jidVariants(value) {
   return [...variants];
 }
 
-function messagesMatchTarget(message, remoteJid) {
-  const targetVariants = jidVariants(remoteJid);
+function messagesMatchTargets(message, targets) {
+  const targetVariants = targets.flatMap(jidVariants);
   const messageVariants = [
     ...jidVariants(message?.remoteJid),
     ...jidVariants(message?.remoteJidAlt),
@@ -116,11 +128,23 @@ function messagesMatchTarget(message, remoteJid) {
   return targetVariants.some((target) => messageVariants.includes(target));
 }
 
-function filterMessages(messages, remoteJid) {
+function filterMessages(messages, targets) {
   return messages
     .map(normalizeMessage)
-    .filter((message) => messagesMatchTarget(message, remoteJid))
+    .filter((message) => messagesMatchTargets(message, targets))
     .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+async function findChatJids(instance, remoteJid) {
+  const data = await request('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
+  const chats = asArray(data);
+  const target = jidVariants(remoteJid);
+  const chat = chats.find((item) => {
+    const candidates = [item?.remoteJid, item?.id, item?.jid, item?.key?.remoteJid];
+    return candidates.some((candidate) => jidVariants(candidate).some((value) => target.includes(value)));
+  });
+  if (!chat) return [];
+  return [remoteJid, chatAlternateJid(chat)].filter(Boolean);
 }
 
 export async function listChats(instance) {
@@ -131,18 +155,39 @@ export async function listChats(instance) {
 export async function listMessages(instance, remoteJid) {
   const encodedInstance = encodeURIComponent(instance);
   const target = String(remoteJid).trim();
+  const targets = [target];
 
-  // Evolution v2.3.x can return an empty result for the remoteJid filter even
-  // when the messages exist. Trust a non-empty filtered response, then fall
-  // back to an unfiltered query and match both remoteJid and remoteJidAlt.
-  const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
-    where: { key: { remoteJid: target } },
-  });
-  const filteredRaw = asArray(filteredData);
-  if (filteredRaw.length) return filteredRaw.map(normalizeMessage).sort((a, b) => a.timestamp - b.timestamp);
+  // WhatsApp LID chats can have a different LID in stored message keys while
+  // the corresponding phone JID is carried by remoteJidAlt. Resolve the chat
+  // first so the phone JID can be used as a second lookup target.
+  if (target.toLowerCase().endsWith('@lid')) {
+    targets.push(...await findChatJids(instance, target));
+  }
+
+  const uniqueTargets = [...new Set(targets.filter(Boolean))];
+
+  // Evolution v2.3.x may return an empty result for remoteJid filters. Try
+  // every known target, then fall back to an unfiltered query and match both
+  // remoteJid and remoteJidAlt locally.
+  for (const candidate of uniqueTargets) {
+    const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
+      where: { key: { remoteJid: candidate } },
+    });
+    const filteredRaw = asArray(filteredData);
+    if (filteredRaw.length) {
+      return filteredRaw.map(normalizeMessage).sort((a, b) => a.timestamp - b.timestamp);
+    }
+  }
 
   const allData = await request('POST', `/chat/findMessages/${encodedInstance}`, {});
-  return filterMessages(asArray(allData), target);
+  return filterMessages(asArray(allData), uniqueTargets);
+}
+
+export async function resolveMessageNumber(instance, remoteJid) {
+  const target = String(remoteJid || '').trim();
+  const targets = target.toLowerCase().endsWith('@lid') ? await findChatJids(instance, target) : [target];
+  const phoneJid = targets.find((jid) => jid.toLowerCase().endsWith('@s.whatsapp.net')) || targets[0] || target;
+  return phoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '') || phoneJid;
 }
 
 export { sendText };
