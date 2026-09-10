@@ -1,35 +1,199 @@
-/* Inbox layout and state isolation */
-.inbox{min-height:0}
-.chatRows,.messageList{min-height:0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#394554 transparent}
-.chatRows::-webkit-scrollbar,.messageList::-webkit-scrollbar{width:8px}
-.chatRows::-webkit-scrollbar-track,.messageList::-webkit-scrollbar-track{background:transparent}
-.chatRows::-webkit-scrollbar-thumb,.messageList::-webkit-scrollbar-thumb{background:#394554;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
-.chatRows{height:100%}
-.messageList{position:relative;isolation:isolate}
-.messageList,.chatRows{overflow-y:auto;overflow-x:hidden}
-.isRefreshing svg{animation:spin .8s linear infinite}
-.inboxSkeletons,.messageSkeletons{display:grid;gap:1px;padding:0}
-.chatSkeleton{height:61px;padding:12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1f2730}
-.chatSkeleton>span{width:36px;height:36px;border-radius:11px;background:linear-gradient(90deg,#19212a,#222c37,#19212a);background-size:200% 100%;animation:skeletonPulse 1.3s ease-in-out infinite}
-.chatSkeleton>div{min-width:0;flex:1;display:grid;gap:8px}
-.chatSkeleton b,.chatSkeleton i{display:block;height:8px;border-radius:999px;background:linear-gradient(90deg,#19212a,#222c37,#19212a);background-size:200% 100%;animation:skeletonPulse 1.3s ease-in-out infinite}
-.chatSkeleton b{width:62%}.chatSkeleton i{width:82%;height:6px}
-.messageSkeletons{flex:1;justify-content:flex-end;padding:10px 0}
-.messageSkeletonRow{display:flex;justify-content:flex-start}
-.messageSkeletonRow.mine{justify-content:flex-end}
-.messageSkeletonRow span{display:block;width:42%;max-width:430px;height:42px;border-radius:12px;background:linear-gradient(90deg,#172029,#222c37,#172029);background-size:200% 100%;animation:skeletonPulse 1.3s ease-in-out infinite}
-.messageSkeletonRow:nth-child(2) span{width:58%;height:54px}.messageSkeletonRow:nth-child(3) span{width:34%}.messageSkeletonRow:nth-child(4) span{width:48%;height:46px}.messageSkeletonRow:nth-child(5) span{width:66%;height:38px}.messageSkeletonRow:nth-child(6) span{width:39%;height:52px}
-.threadEmpty,.chatState{flex:1}
-.composer{flex:0 0 auto}
-@keyframes skeletonPulse{0%,100%{background-position:100% 0}50%{background-position:0 0}}
-@media(max-width:720px){
-  .inbox{height:calc(100vh - 190px);min-height:520px}
-  .chatRows{height:auto;flex:1}
-  .messageList{padding:16px}
-  .messageSkeletonRow span{max-width:78%}
+/* Inbox: hard height boundaries so each panel owns its own scroll area. */
+.inbox {
+  height: 680px;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
-@media(max-width:560px){
-  .inbox{height:calc(100vh - 150px);min-height:500px}
-  .messageList{padding:14px 12px}
-  .composer{padding:10px}
+
+.chatList,
+.thread {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chatList {
+  display: flex;
+  flex-direction: column;
+}
+
+.chatRows {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: auto;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+}
+
+.threadHead,
+.composer {
+  flex: 0 0 auto;
+}
+
+.messageList {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: auto;
+  position: relative;
+  isolation: isolate;
+}
+
+.chatRows::-webkit-scrollbar,
+.messageList::-webkit-scrollbar {
+  width: 9px;
+}
+
+.chatRows::-webkit-scrollbar-track,
+.messageList::-webkit-scrollbar-track {
+  background: #0b1015;
+}
+
+.chatRows::-webkit-scrollbar-thumb,
+.messageList::-webkit-scrollbar-thumb {
+  background: #3b4654;
+  border-radius: 999px;
+  border: 2px solid #0b1015;
+}
+
+.chatRows::-webkit-scrollbar-thumb:hover,
+.messageList::-webkit-scrollbar-thumb:hover {
+  background: #566477;
+}
+
+.chatState,
+.threadEmpty {
+  flex: 1 1 auto;
+}
+
+/* Loading skeletons never overlap real content. */
+.inboxSkeletons,
+.messageSkeletons {
+  display: grid;
+  gap: 8px;
+}
+
+.chatSkeleton {
+  height: 61px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #1f2730;
+}
+
+.chatSkeleton > span {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #19212a, #27323f, #19212a);
+  background-size: 200% 100%;
+  animation: inboxSkeletonPulse 1.3s ease-in-out infinite;
+}
+
+.chatSkeleton > div {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+
+.chatSkeleton b,
+.chatSkeleton i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #19212a, #27323f, #19212a);
+  background-size: 200% 100%;
+  animation: inboxSkeletonPulse 1.3s ease-in-out infinite;
+}
+
+.chatSkeleton b { width: 62%; }
+.chatSkeleton i { width: 82%; height: 6px; }
+
+.messageSkeletons {
+  min-height: 100%;
+  align-content: end;
+  padding: 10px 0;
+}
+
+.messageSkeletonRow {
+  display: flex;
+}
+
+.messageSkeletonRow.mine {
+  justify-content: flex-end;
+}
+
+.messageSkeletonRow span {
+  width: 42%;
+  max-width: 430px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #172029, #27323f, #172029);
+  background-size: 200% 100%;
+  animation: inboxSkeletonPulse 1.3s ease-in-out infinite;
+}
+
+.messageSkeletonRow:nth-child(2) span { width: 58%; height: 54px; }
+.messageSkeletonRow:nth-child(3) span { width: 34%; }
+.messageSkeletonRow:nth-child(4) span { width: 48%; height: 46px; }
+.messageSkeletonRow:nth-child(5) span { width: 66%; height: 38px; }
+.messageSkeletonRow:nth-child(6) span { width: 39%; height: 52px; }
+
+@keyframes inboxSkeletonPulse {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0 0; }
+}
+
+.isRefreshing svg {
+  animation: spin .8s linear infinite;
+}
+
+@media (max-width: 720px) {
+  .inbox {
+    height: calc(100vh - 190px);
+    min-height: 520px;
+  }
+
+  .chatRows,
+  .messageList {
+    min-height: 0;
+  }
+
+  .messageList {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .inbox {
+    height: calc(100vh - 150px);
+    min-height: 500px;
+  }
+
+  .messageList {
+    padding: 14px 12px;
+  }
+
+  .composer {
+    padding: 10px;
+  }
 }
