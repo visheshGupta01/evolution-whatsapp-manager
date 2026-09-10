@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listChats, listMessages, sendText } from '../services/chat.service.js';
+import { listChats, listMessages, resolveMessageNumber, sendText } from '../services/chat.service.js';
 
 export const chatsRouter = Router();
 
@@ -47,8 +47,8 @@ chatsRouter.post('/:instance/:remoteJid/messages', async (req, res, next) => {
     if (!remoteJid || !text) {
       return res.status(400).json({ ok: false, message: 'remoteJid and text are required' });
     }
-    const number = remoteJid.replace(/@s\.whatsapp\.net$/, '').replace(/\D/g, '');
-    res.status(201).json(await sendText(value, number || remoteJid, text));
+    const number = await resolveMessageNumber(value, remoteJid);
+    res.status(201).json(await sendText(value, number, text));
   } catch (error) {
     next(error);
   }
