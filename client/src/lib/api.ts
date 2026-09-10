@@ -96,9 +96,9 @@ export const chatsApi = {
   messages: (instance: string, remoteJid: string) => request<Message[]>(
     `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
   ),
-  send: (instance: string, remoteJid: string, text: string) => request<Message>(
+  send: (instance: string, remoteJid: string, text: string, remoteJidAlt?: string) => request<Message>(
     `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
-    { method: 'POST', body: JSON.stringify({ text }) },
+    { method: 'POST', body: JSON.stringify({ text, remoteJidAlt }) },
   ),
 };
 
