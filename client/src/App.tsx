@@ -5,6 +5,7 @@ import { Topbar } from './components/layout/Topbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { SessionsPage } from './pages/SessionsPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { ContactsPage } from './pages/ContactsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
@@ -24,6 +25,7 @@ export function App() {
         <Route path="/" element={<DashboardPage onCreate={() => setCreateOpen(true)} />} />
         <Route path="/sessions" element={<SessionsPage onCreate={() => setCreateOpen(true)} />} />
         <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes></main>
       {createOpen && <CreateSessionModal close={() => setCreateOpen(false)} />}
