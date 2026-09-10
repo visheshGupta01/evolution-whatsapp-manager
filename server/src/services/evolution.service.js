@@ -32,25 +32,44 @@ function messageFrom(error) {
 
 async function request(options) {
   try {
-    return await client.request({ ...options, headers: { apikey: config.evolutionKey, ...(options.headers || {}) } });
+    return await client.request({
+      ...options,
+      headers: { apikey: config.evolutionKey, ...(options.headers || {}) },
+    });
   } catch (error) {
     throw new EvolutionError(messageFrom(error), error?.response?.status || 502, error?.response?.data);
   }
 }
 
+function extractState(value) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return undefined;
+  return value.state || value.status || value.connectionStatus || value.connection?.state;
+}
+
 function normalize(item, connectionState) {
   const instance = item?.instance || item || {};
-  const connection = instance.connectionStatus || item?.connectionStatus || connectionState?.instance || connectionState || {};
-  const instanceName = instance.instanceName || item?.instanceName || item?.name || connection?.instanceName;
-  const state = connection?.state || connection?.status || instance.state || item?.state || instance.status || item?.status;
+  const connection = instance.connectionStatus ?? item?.connectionStatus ?? item?.connection ?? instance.connection;
+  const liveConnection = connectionState?.instance ?? connectionState;
+
+  const instanceName = instance.instanceName || item?.instanceName || item?.name || liveConnection?.instanceName;
+  const state = extractState(liveConnection)
+    || extractState(connection)
+    || extractState(instance.state)
+    || extractState(item?.state)
+    || extractState(instance.status)
+    || extractState(item?.status);
+
+  const owner = instance.ownerJid || instance.owner || item?.ownerJid || item?.owner
+    || liveConnection?.ownerJid || liveConnection?.owner;
 
   return {
     instanceName,
     status: state,
     state,
-    ownerJid: instance.owner || item?.owner || connection?.owner,
-    profileName: instance.profileName || item?.profileName || connection?.profileName,
-    number: instance.number || item?.number || connection?.number || connection?.owner?.split?.('@')[0],
+    ownerJid: owner,
+    profileName: instance.profileName || item?.profileName || liveConnection?.profileName,
+    number: instance.number || item?.number || instance.phoneNumber || item?.phoneNumber || owner?.split?.('@')[0],
     tokenKnown: Boolean(instanceName && tokens.has(instanceName)),
   };
 }
@@ -65,14 +84,16 @@ export async function listInstances() {
   const { data } = await request({ method: 'GET', url: '/instance/fetchInstances' });
   const items = Array.isArray(data) ? data : Array.isArray(data?.instances) ? data.instances : data ? [data] : [];
 
-  // Evolution's fetchInstances response can omit the live connection state.
-  // Resolve it explicitly so the dashboard reflects an already-connected
-  // WhatsApp instance instead of showing `unknown` / `offline`.
   return Promise.all(items.map(async (item) => {
     const instance = item?.instance || item || {};
     const name = instance.instanceName || item?.instanceName || item?.name;
     if (!name) return null;
 
+    // fetchInstances on Evolution v2 may return connectionStatus as a STRING
+    // (`open`, `connecting`, `close`). The previous normalizer treated that
+    // string like an object and therefore silently converted a connected
+    // instance into `unknown`. Prefer the dedicated live endpoint when it is
+    // available, but always keep the fetchInstances state as a fallback.
     try {
       const { data: state } = await request({
         method: 'GET',
@@ -124,7 +145,11 @@ export async function createInstance(instanceName) {
 
 export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
-export const deleteInstance = async (instance) => { const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` }); tokens.delete(instance); return data; };
+export const deleteInstance = async (instance) => {
+  const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` });
+  tokens.delete(instance);
+  return data;
+};
 
 export async function logoutInstance(instance) {
   try {
@@ -135,4 +160,8 @@ export async function logoutInstance(instance) {
   }
 }
 
-export const sendText = (instance, number, text) => request({ method: 'POST', url: `/message/sendText/${encodeURIComponent(instance)}`, data: { number, text } }).then((r) => r.data);
+export const sendText = (instance, number, text) => request({
+  method: 'POST',
+  url: `/message/sendText/${encodeURIComponent(instance)}`,
+  data: { number, text },
+}).then((r) => r.data);
