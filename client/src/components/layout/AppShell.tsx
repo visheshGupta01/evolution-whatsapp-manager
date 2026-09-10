@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Activity, MessageCircle, Settings2, Smartphone, Zap } from 'lucide-react';
+import { Activity, ContactRound, MessageCircle, Settings2, Smartphone, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAppStore } from '../../stores/app-store';
 
@@ -7,6 +7,7 @@ const items = [
   { to: '/', label: 'Overview', icon: Activity },
   { to: '/sessions', label: 'Sessions', icon: Smartphone },
   { to: '/messages', label: 'Messages', icon: MessageCircle },
+  { to: '/contacts', label: 'Contacts', icon: ContactRound },
   { to: '/settings', label: 'Settings', icon: Settings2 },
 ];
 
