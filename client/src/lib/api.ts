@@ -11,7 +11,7 @@ export type Session = {
 export type Chat = {
   id: string;
   remoteJid: string;
-  remoteJidAlt?: string;
+  remoteJidAlt: string;
   name: string;
   unreadCount: number;
   archived: boolean;
