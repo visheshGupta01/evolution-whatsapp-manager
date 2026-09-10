@@ -38,6 +38,9 @@ function asArray(value) {
   if (Array.isArray(value?.data)) return value.data;
   if (Array.isArray(value?.chats)) return value.chats;
   if (Array.isArray(value?.messages)) return value.messages;
+  if (Array.isArray(value?.messages?.records)) return value.messages.records;
+  if (Array.isArray(value?.response?.messages)) return value.response.messages;
+  if (Array.isArray(value?.response?.messages?.records)) return value.response.messages.records;
   return value ? [value] : [];
 }
 
@@ -106,10 +109,10 @@ export async function listMessages(instance, remoteJid) {
   const encodedInstance = encodeURIComponent(instance);
   const target = String(remoteJid).trim();
 
-  // Evolution documents the `where.key.remoteJid` filter, but some v2.3.x
-  // installations can return an empty array for that filter even when the
-  // messages exist. Retry with an unfiltered query and filter locally so the
-  // manager still shows the conversation history.
+  // Evolution v2.3.x can return an empty result for the remoteJid filter even
+  // when the messages exist. Try the documented filter first, then fetch all
+  // and filter locally. The response can be either an array or
+  // { messages: { records: [...] } }, so asArray() normalizes both shapes.
   const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
     where: { key: { remoteJid: target } },
   });
