@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useAppStore } from '../../stores/app-store';
 
 const titles: Record<string, string> = {
-  '/': 'Overview', '/sessions': 'Sessions', '/messages': 'Messages', '/settings': 'Settings',
+  '/': 'Overview', '/sessions': 'Sessions', '/messages': 'Messages', '/contacts': 'Contacts', '/settings': 'Settings',
 };
 
 export function Topbar({ onRefresh, onAdd }: { onRefresh: () => void; onAdd: () => void }) {
