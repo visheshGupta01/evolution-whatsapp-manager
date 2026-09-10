@@ -7,16 +7,32 @@ import { chatsQueryKey, messagesQueryKey } from './use-chats';
 const SESSION_EVENTS = new Set(['connection.update', 'qrcode.updated', 'application.startup']);
 const MESSAGE_EVENTS = new Set(['messages.upsert', 'messages.update', 'messages.delete', 'send.message']);
 
+function messageItems(data: any) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.messages?.records)) return data.messages.records;
+  if (Array.isArray(data?.messages)) return data.messages;
+  if (Array.isArray(data?.records)) return data.records;
+  return [data];
+}
+
 function messageJids(event: RealtimeEvent) {
-  const data = event.data as any;
-  const key = data?.key || data?.message?.key || {};
-  const message = data?.message || data;
-  return [...new Set([
-    key?.remoteJid,
-    key?.remoteJidAlt,
-    message?.remoteJid,
-    message?.remoteJidAlt,
-  ].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())))];
+  const jids = new Set<string>();
+
+  for (const item of messageItems(event.data)) {
+    const key = item?.key || item?.message?.key || {};
+    const message = item?.message || item;
+
+    for (const value of [
+      key?.remoteJid,
+      key?.remoteJidAlt,
+      message?.remoteJid,
+      message?.remoteJidAlt,
+    ]) {
+      if (typeof value === 'string' && value.trim()) jids.add(value.trim());
+    }
+  }
+
+  return [...jids];
 }
 
 export function useRealtime() {
@@ -29,16 +45,22 @@ export function useRealtime() {
       }
 
       if (MESSAGE_EVENTS.has(event.event) && event.instance) {
-        // Keep the conversation list fresh immediately when Evolution emits
-        // an incoming/outgoing message or message-state update.
         void queryClient.invalidateQueries({ queryKey: chatsQueryKey(event.instance) });
 
-        // WhatsApp can represent the same conversation with a LID and a
-        // phone JID. Invalidate every JID carried by the event so the active
-        // thread refreshes regardless of which identifier Evolution emits.
-        for (const remoteJid of messageJids(event)) {
+        const jids = messageJids(event);
+        if (jids.length) {
+          for (const remoteJid of jids) {
+            void queryClient.invalidateQueries({
+              queryKey: messagesQueryKey(event.instance, remoteJid),
+            });
+          }
+        } else {
+          // Some Evolution webhook payloads wrap messages in arrays/records
+          // without exposing the JID at the top level. Refresh the active
+          // conversation query as a safe fallback.
           void queryClient.invalidateQueries({
-            queryKey: messagesQueryKey(event.instance, remoteJid),
+            queryKey: ['messages', event.instance],
+            exact: false,
           });
         }
       }
