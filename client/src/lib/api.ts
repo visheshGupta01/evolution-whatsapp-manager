@@ -16,7 +16,19 @@ export type ApiResponse = {
   message?: string;
 };
 
-const API = String(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+function resolveApiBase() {
+  const configured = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+
+  // Accept both the new `http://host:3000/api` form and the older
+  // `http://host:3000` form so an existing .env does not silently break
+  // the dashboard after the backend was moved under /api.
+  if (!configured) return `${window.location.origin}/api`;
+  if (configured === '/api' || configured.endsWith('/api')) return configured;
+  if (/^https?:\/\/[^/]+$/i.test(configured)) return `${configured}/api`;
+  return configured;
+}
+
+const API = resolveApiBase();
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API}${path}`, {
