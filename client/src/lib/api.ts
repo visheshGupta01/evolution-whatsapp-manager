@@ -8,6 +8,27 @@ export type Session = {
   tokenKnown?: boolean;
 };
 
+export type Chat = {
+  id: string;
+  remoteJid: string;
+  name: string;
+  unreadCount: number;
+  archived: boolean;
+  timestamp: string | number | null;
+  lastMessage: string;
+};
+
+export type Message = {
+  id: string;
+  remoteJid: string;
+  fromMe: boolean;
+  text: string;
+  timestamp: number;
+  status: string | null;
+  messageType: string;
+  pushName: string | null;
+};
+
 export type ApiResponse = {
   base64?: string;
   qrcode?: string;
@@ -18,10 +39,6 @@ export type ApiResponse = {
 
 function resolveApiBase() {
   const configured = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-
-  // Accept both the new `http://host:3000/api` form and the older
-  // `http://host:3000` form so an existing .env does not silently break
-  // the dashboard after the backend was moved under /api.
   if (!configured) return `${window.location.origin}/api`;
   if (configured === '/api' || configured.endsWith('/api')) return configured;
   if (/^https?:\/\/[^/]+$/i.test(configured)) return `${configured}/api`;
@@ -39,11 +56,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       ...(init.headers || {}),
     },
   });
-
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(body?.message || `Request failed (${response.status})`);
-  }
+  if (!response.ok) throw new Error(body?.message || `Request failed (${response.status})`);
   return body as T;
 }
 
@@ -51,16 +65,23 @@ export const apiConfig = { baseUrl: API };
 
 export const sessionsApi = {
   list: () => request<Session[]>('/sessions'),
-  create: (instanceName: string) => request('/sessions', {
-    method: 'POST',
-    body: JSON.stringify({ instanceName }),
-  }),
+  create: (instanceName: string) => request('/sessions', { method: 'POST', body: JSON.stringify({ instanceName }) }),
   connect: (instance: string) => request<ApiResponse>(`/sessions/${encodeURIComponent(instance)}/connect`),
   restart: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/restart`, { method: 'POST' }),
   disconnect: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/disconnect`, { method: 'POST' }),
   remove: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}`, { method: 'DELETE' }),
   sendText: (instance: string, number: string, text: string) => request(`/sessions/${encodeURIComponent(instance)}/send-text`, {
-    method: 'POST',
-    body: JSON.stringify({ number, text }),
+    method: 'POST', body: JSON.stringify({ number, text }),
   }),
+};
+
+export const chatsApi = {
+  list: (instance: string) => request<Chat[]>(`/chats/${encodeURIComponent(instance)}`),
+  messages: (instance: string, remoteJid: string) => request<Message[]>(
+    `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
+  ),
+  send: (instance: string, remoteJid: string, text: string) => request<Message>(
+    `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
+    { method: 'POST', body: JSON.stringify({ text }) },
+  ),
 };
