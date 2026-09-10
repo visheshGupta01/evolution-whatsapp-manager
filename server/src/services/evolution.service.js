@@ -38,16 +38,19 @@ async function request(options) {
   }
 }
 
-function normalize(item) {
+function normalize(item, connectionState) {
   const instance = item?.instance || item || {};
-  const instanceName = instance.instanceName || item?.instanceName || item?.name;
+  const connection = instance.connectionStatus || item?.connectionStatus || connectionState?.instance || connectionState || {};
+  const instanceName = instance.instanceName || item?.instanceName || item?.name || connection?.instanceName;
+  const state = connection?.state || connection?.status || instance.state || item?.state || instance.status || item?.status;
+
   return {
     instanceName,
-    status: instance.status || item?.status,
-    state: instance.connectionStatus?.state || item?.connectionStatus?.state || instance.state || item?.state,
-    ownerJid: instance.owner || item?.owner,
-    profileName: instance.profileName || item?.profileName,
-    number: instance.number || item?.number,
+    status: state,
+    state,
+    ownerJid: instance.owner || item?.owner || connection?.owner,
+    profileName: instance.profileName || item?.profileName || connection?.profileName,
+    number: instance.number || item?.number || connection?.number || connection?.owner?.split?.('@')[0],
     tokenKnown: Boolean(instanceName && tokens.has(instanceName)),
   };
 }
@@ -61,7 +64,25 @@ export async function health() {
 export async function listInstances() {
   const { data } = await request({ method: 'GET', url: '/instance/fetchInstances' });
   const items = Array.isArray(data) ? data : Array.isArray(data?.instances) ? data.instances : data ? [data] : [];
-  return items.map(normalize).filter((item) => item.instanceName);
+
+  // Evolution's fetchInstances response can omit the live connection state.
+  // Resolve it explicitly so the dashboard reflects an already-connected
+  // WhatsApp instance instead of showing `unknown` / `offline`.
+  return Promise.all(items.map(async (item) => {
+    const instance = item?.instance || item || {};
+    const name = instance.instanceName || item?.instanceName || item?.name;
+    if (!name) return null;
+
+    try {
+      const { data: state } = await request({
+        method: 'GET',
+        url: `/instance/connectionState/${encodeURIComponent(name)}`,
+      });
+      return normalize(item, state);
+    } catch {
+      return normalize(item);
+    }
+  })).then((instances) => instances.filter((item) => item?.instanceName));
 }
 
 export async function createInstance(instanceName) {
