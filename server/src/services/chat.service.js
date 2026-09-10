@@ -36,11 +36,14 @@ async function request(method, url, data) {
 function asArray(value) {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.records)) return value.data.records;
   if (Array.isArray(value?.chats)) return value.chats;
   if (Array.isArray(value?.messages)) return value.messages;
   if (Array.isArray(value?.messages?.records)) return value.messages.records;
   if (Array.isArray(value?.response?.messages)) return value.response.messages;
   if (Array.isArray(value?.response?.messages?.records)) return value.response.messages.records;
+  if (Array.isArray(value?.response?.records)) return value.response.records;
+  if (Array.isArray(value?.records)) return value.records;
   return value ? [value] : [];
 }
 
@@ -76,9 +79,12 @@ export function normalizeChat(chat) {
 
 export function normalizeMessage(message) {
   const key = message?.key || {};
+  const remoteJid = key?.remoteJid || message?.remoteJid || '';
+  const remoteJidAlt = key?.remoteJidAlt || message?.remoteJidAlt || '';
   return {
-    id: String(key?.id || message?.id || `${key?.remoteJid || ''}-${message?.messageTimestamp || Date.now()}`),
-    remoteJid: String(key?.remoteJid || message?.remoteJid || ''),
+    id: String(key?.id || message?.id || `${remoteJid}-${message?.messageTimestamp || Date.now()}`),
+    remoteJid: String(remoteJid),
+    remoteJidAlt: String(remoteJidAlt),
     fromMe: Boolean(key?.fromMe || message?.fromMe),
     text: textFromMessage(message),
     timestamp: Number(message?.messageTimestamp || message?.timestamp || 0),
@@ -89,14 +95,31 @@ export function normalizeMessage(message) {
   };
 }
 
+function jidVariants(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return [];
+  const withoutDevice = raw.replace(/:\d+(?=@)/, '');
+  const number = withoutDevice.split('@')[0].replace(/\D/g, '');
+  const variants = new Set([raw, withoutDevice]);
+  if (number) variants.add(number);
+  return [...variants];
+}
+
+function messagesMatchTarget(message, remoteJid) {
+  const targetVariants = jidVariants(remoteJid);
+  const messageVariants = [
+    ...jidVariants(message?.remoteJid),
+    ...jidVariants(message?.remoteJidAlt),
+    ...jidVariants(message?.key?.remoteJid),
+    ...jidVariants(message?.key?.remoteJidAlt),
+  ];
+  return targetVariants.some((target) => messageVariants.includes(target));
+}
+
 function filterMessages(messages, remoteJid) {
-  const target = String(remoteJid).trim().toLowerCase();
   return messages
     .map(normalizeMessage)
-    .filter((message) => {
-      const jid = message.remoteJid.toLowerCase();
-      return jid === target || jid.split('@')[0] === target.split('@')[0];
-    })
+    .filter((message) => messagesMatchTarget(message, remoteJid))
     .sort((a, b) => a.timestamp - b.timestamp);
 }
 
@@ -110,14 +133,13 @@ export async function listMessages(instance, remoteJid) {
   const target = String(remoteJid).trim();
 
   // Evolution v2.3.x can return an empty result for the remoteJid filter even
-  // when the messages exist. Try the documented filter first, then fetch all
-  // and filter locally. The response can be either an array or
-  // { messages: { records: [...] } }, so asArray() normalizes both shapes.
+  // when the messages exist. Trust a non-empty filtered response, then fall
+  // back to an unfiltered query and match both remoteJid and remoteJidAlt.
   const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
     where: { key: { remoteJid: target } },
   });
-  const filtered = filterMessages(asArray(filteredData), target);
-  if (filtered.length) return filtered;
+  const filteredRaw = asArray(filteredData);
+  if (filteredRaw.length) return filteredRaw.map(normalizeMessage).sort((a, b) => a.timestamp - b.timestamp);
 
   const allData = await request('POST', `/chat/findMessages/${encodedInstance}`, {});
   return filterMessages(asArray(allData), target);
