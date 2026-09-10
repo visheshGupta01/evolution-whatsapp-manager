@@ -10,9 +10,15 @@ const client = axios.create({
 
 function messageFrom(error) {
   const data = error?.response?.data;
-  if (Array.isArray(data?.response?.message)) return data.response.message.join(', ');
-  if (Array.isArray(data?.message)) return data.message.join(', ');
-  if (typeof data?.message === 'string') return data.message;
+  const messages = data?.response?.message ?? data?.message;
+  if (Array.isArray(messages)) {
+    return messages.flat(Infinity).map((item) => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') return item.message || JSON.stringify(item);
+      return String(item);
+    }).join(', ');
+  }
+  if (typeof messages === 'string') return messages;
   return error?.message || 'Evolution API request failed';
 }
 
@@ -68,6 +74,8 @@ function chatAlternateJid(chat) {
     || chat?.altJid
     || chat?.phoneJid
     || chat?.numberJid
+    || chat?.contact?.remoteJidAlt
+    || chat?.contact?.jid
     || '';
 }
 
@@ -140,11 +148,24 @@ async function findChatJids(instance, remoteJid) {
   const chats = asArray(data);
   const target = jidVariants(remoteJid);
   const chat = chats.find((item) => {
-    const candidates = [item?.remoteJid, item?.id, item?.jid, item?.key?.remoteJid];
+    const candidates = [
+      item?.remoteJid,
+      item?.remoteJidAlt,
+      item?.id,
+      item?.jid,
+      item?.key?.remoteJid,
+      item?.key?.remoteJidAlt,
+    ];
     return candidates.some((candidate) => jidVariants(candidate).some((value) => target.includes(value)));
   });
   if (!chat) return [];
-  return [remoteJid, chatAlternateJid(chat)].filter(Boolean);
+  return [...new Set([
+    remoteJid,
+    chat?.remoteJid,
+    chatAlternateJid(chat),
+    chat?.key?.remoteJid,
+    chat?.key?.remoteJidAlt,
+  ].filter(Boolean))];
 }
 
 export async function listChats(instance) {
@@ -157,18 +178,12 @@ export async function listMessages(instance, remoteJid) {
   const target = String(remoteJid).trim();
   const targets = [target];
 
-  // WhatsApp LID chats can have a different LID in stored message keys while
-  // the corresponding phone JID is carried by remoteJidAlt. Resolve the chat
-  // first so the phone JID can be used as a second lookup target.
   if (target.toLowerCase().endsWith('@lid')) {
     targets.push(...await findChatJids(instance, target));
   }
 
   const uniqueTargets = [...new Set(targets.filter(Boolean))];
 
-  // Evolution v2.3.x may return an empty result for remoteJid filters. Try
-  // every known target, then fall back to an unfiltered query and match both
-  // remoteJid and remoteJidAlt locally.
   for (const candidate of uniqueTargets) {
     const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
       where: { key: { remoteJid: candidate } },
@@ -185,9 +200,20 @@ export async function listMessages(instance, remoteJid) {
 
 export async function resolveMessageNumber(instance, remoteJid) {
   const target = String(remoteJid || '').trim();
-  const targets = target.toLowerCase().endsWith('@lid') ? await findChatJids(instance, target) : [target];
-  const phoneJid = targets.find((jid) => jid.toLowerCase().endsWith('@s.whatsapp.net')) || targets[0] || target;
-  return phoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '') || phoneJid;
+  const targets = target.toLowerCase().endsWith('@lid')
+    ? await findChatJids(instance, target)
+    : [target];
+
+  const phoneJid = targets.find((jid) => jid.toLowerCase().endsWith('@s.whatsapp.net'));
+  if (phoneJid) return phoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '');
+
+  const groupJid = targets.find((jid) => jid.toLowerCase().endsWith('@g.us'));
+  if (groupJid) return groupJid;
+
+  const numericTarget = targets.find((jid) => /^\d{7,20}$/.test(String(jid).replace(/\D/g, '')));
+  if (numericTarget) return String(numericTarget).replace(/\D/g, '');
+
+  throw Object.assign(new Error('Could not resolve this WhatsApp chat to a sendable phone number. Refresh the conversations and try again.'), { status: 400 });
 }
 
 export { sendText };
