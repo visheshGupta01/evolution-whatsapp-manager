@@ -9,6 +9,7 @@ export const config = Object.freeze({
   evolutionUrl: env('EVOLUTION_API_URL').replace(/\/+$/, ''),
   evolutionKey: env('EVOLUTION_API_KEY'),
   evolutionTimeoutMs: Number(process.env.EVOLUTION_TIMEOUT_MS || 15000),
+  webhookUrl: env('EVOLUTION_WEBHOOK_URL', 'http://localhost:3000/api/webhooks/evolution'),
   webhookSecret: env('EVOLUTION_WEBHOOK_SECRET'),
   bodyLimit: env('BODY_LIMIT', '1mb'),
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60000),
