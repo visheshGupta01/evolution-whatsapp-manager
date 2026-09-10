@@ -43,11 +43,12 @@ chatsRouter.post('/:instance/:remoteJid/messages', async (req, res, next) => {
     const value = requireInstance(req, res);
     if (!value) return;
     const remoteJid = decodeURIComponent(String(req.params.remoteJid || '')).trim();
+    const remoteJidAlt = String(req.body?.remoteJidAlt || '').trim();
     const text = String(req.body?.text || '').trim();
     if (!remoteJid || !text) {
       return res.status(400).json({ ok: false, message: 'remoteJid and text are required' });
     }
-    const number = await resolveMessageNumber(value, remoteJid);
+    const number = await resolveMessageNumber(value, remoteJid, remoteJidAlt);
     res.status(201).json(await sendText(value, number, text));
   } catch (error) {
     next(error);
