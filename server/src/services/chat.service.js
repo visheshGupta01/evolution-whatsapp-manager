@@ -86,19 +86,38 @@ export function normalizeMessage(message) {
   };
 }
 
+function filterMessages(messages, remoteJid) {
+  const target = String(remoteJid).trim().toLowerCase();
+  return messages
+    .map(normalizeMessage)
+    .filter((message) => {
+      const jid = message.remoteJid.toLowerCase();
+      return jid === target || jid.split('@')[0] === target.split('@')[0];
+    })
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
 export async function listChats(instance) {
   const data = await request('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
   return asArray(data).map(normalizeChat).filter((chat) => chat.remoteJid);
 }
 
 export async function listMessages(instance, remoteJid) {
-  const data = await request('POST', `/chat/findMessages/${encodeURIComponent(instance)}`, {
-    where: { key: { remoteJid } },
+  const encodedInstance = encodeURIComponent(instance);
+  const target = String(remoteJid).trim();
+
+  // Evolution documents the `where.key.remoteJid` filter, but some v2.3.x
+  // installations can return an empty array for that filter even when the
+  // messages exist. Retry with an unfiltered query and filter locally so the
+  // manager still shows the conversation history.
+  const filteredData = await request('POST', `/chat/findMessages/${encodedInstance}`, {
+    where: { key: { remoteJid: target } },
   });
-  return asArray(data)
-    .map(normalizeMessage)
-    .filter((message) => message.remoteJid)
-    .sort((a, b) => a.timestamp - b.timestamp);
+  const filtered = filterMessages(asArray(filteredData), target);
+  if (filtered.length) return filtered;
+
+  const allData = await request('POST', `/chat/findMessages/${encodedInstance}`, {});
+  return filterMessages(asArray(allData), target);
 }
 
 export { sendText };
