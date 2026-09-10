@@ -9,7 +9,18 @@ export type RealtimeEvent = {
   data: unknown;
 };
 
-const url = import.meta.env.VITE_API_URL || window.location.origin;
+function resolveSocketUrl() {
+  const configured = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+
+  if (!configured || configured === '/api') return window.location.origin;
+  if (/^https?:\/\//i.test(configured) && configured.endsWith('/api')) {
+    return configured.slice(0, -4) || window.location.origin;
+  }
+  if (/^https?:\/\//i.test(configured)) return configured;
+  return window.location.origin;
+}
+
+const socketUrl = resolveSocketUrl();
 let socket: Socket | null = null;
 
 export function connectRealtime(options: {
@@ -17,9 +28,14 @@ export function connectRealtime(options: {
   onConnectionChange?: (connected: boolean) => void;
 } = {}) {
   if (!socket) {
-    socket = io(url, {
+    socket = io(socketUrl, {
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
   }
 
@@ -34,11 +50,11 @@ export function connectRealtime(options: {
 }
 
 export function subscribeToInstance(instance: string) {
-  socket?.emit('subscribe:instance', instance);
+  if (instance.trim()) socket?.emit('subscribe:instance', instance.trim());
 }
 
 export function unsubscribeFromInstance(instance: string) {
-  socket?.emit('unsubscribe:instance', instance);
+  if (instance.trim()) socket?.emit('unsubscribe:instance', instance.trim());
 }
 
 export function disconnectRealtime() {
