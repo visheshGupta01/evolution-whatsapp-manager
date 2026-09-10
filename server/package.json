@@ -1,8 +1,19 @@
 {
   "name": "evolution-whatsapp-manager-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node --watch src/index.js", "start": "node src/index.js" },
-  "dependencies": { "axios": "^1.8.4", "cors": "^2.8.5", "dotenv": "^16.4.7", "express": "^5.1.0", "helmet": "^8.1.0", "morgan": "^1.10.0" }
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/middleware-v2.js && node --check src/services/evolution.service.js && node --check src/routes/health.routes.js && node --check src/routes/sessions.routes.js"
+  },
+  "dependencies": {
+    "axios": "^1.8.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.0"
+  }
 }
