@@ -8,17 +8,22 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function formatErrorValue(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.flat(Infinity).map(formatErrorValue).filter(Boolean).join(', ');
+  if (value && typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.error === 'string') return value.error;
+    try { return JSON.stringify(value); } catch { return '[object]'; }
+  }
+  return value == null ? '' : String(value);
+}
+
 function messageFrom(error) {
   const data = error?.response?.data;
-  const messages = data?.response?.message ?? data?.message;
-  if (Array.isArray(messages)) {
-    return messages.flat(Infinity).map((item) => {
-      if (typeof item === 'string') return item;
-      if (item && typeof item === 'object') return item.message || JSON.stringify(item);
-      return String(item);
-    }).join(', ');
-  }
-  if (typeof messages === 'string') return messages;
+  const messages = data?.response?.message ?? data?.message ?? data?.error;
+  const formatted = formatErrorValue(messages);
+  if (formatted) return formatted;
   return error?.message || 'Evolution API request failed';
 }
 
@@ -143,29 +148,50 @@ function filterMessages(messages, targets) {
     .sort((a, b) => a.timestamp - b.timestamp);
 }
 
-async function findChatJids(instance, remoteJid) {
-  const data = await request('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
-  const chats = asArray(data);
-  const target = jidVariants(remoteJid);
-  const chat = chats.find((item) => {
-    const candidates = [
-      item?.remoteJid,
-      item?.remoteJidAlt,
-      item?.id,
-      item?.jid,
-      item?.key?.remoteJid,
-      item?.key?.remoteJidAlt,
-    ];
-    return candidates.some((candidate) => jidVariants(candidate).some((value) => target.includes(value)));
-  });
-  if (!chat) return [];
-  return [...new Set([
-    remoteJid,
+function chatJidCandidates(chat) {
+  return [
     chat?.remoteJid,
-    chatAlternateJid(chat),
+    chat?.remoteJidAlt,
+    chat?.id,
+    chat?.jid,
     chat?.key?.remoteJid,
     chat?.key?.remoteJidAlt,
-  ].filter(Boolean))];
+    chat?.contact?.remoteJid,
+    chat?.contact?.remoteJidAlt,
+    chatAlternateJid(chat),
+  ].filter(Boolean);
+}
+
+async function findChatJids(instance, remoteJid) {
+  const target = jidVariants(remoteJid);
+  const found = [];
+
+  // Evolution 2.3.7 exposes a dedicated lookup endpoint. It is more reliable
+  // for LID chats than assuming findChats always includes remoteJidAlt.
+  try {
+    const encodedInstance = encodeURIComponent(instance);
+    const encodedRemoteJid = encodeURIComponent(remoteJid);
+    const direct = await request(
+      'GET',
+      `/chat/findChatByRemoteJid/${encodedInstance}?remoteJid=${encodedRemoteJid}`,
+    );
+    found.push(...asArray(direct).flatMap(chatJidCandidates));
+  } catch {
+    // Fall back to the chat list below. Older Evolution builds may not expose
+    // the dedicated lookup endpoint.
+  }
+
+  try {
+    const data = await request('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
+    const chats = asArray(data);
+    const chat = chats.find((item) => chatJidCandidates(item).some((candidate) =>
+      jidVariants(candidate).some((value) => target.includes(value))));
+    if (chat) found.push(...chatJidCandidates(chat));
+  } catch {
+    // Keep any JIDs found through the dedicated lookup endpoint.
+  }
+
+  return [...new Set([remoteJid, ...found].filter(Boolean))];
 }
 
 export async function listChats(instance) {
@@ -202,9 +228,6 @@ export async function resolveMessageNumber(instance, remoteJid, remoteJidAlt = '
   const target = String(remoteJid || '').trim();
   const alternate = String(remoteJidAlt || '').trim();
 
-  // Evolution v2.3.7 can reject a LID with { exists:false, jid:"...@lid" }.
-  // When the chat also exposes remoteJidAlt, that is the phone JID we should
-  // use for the sendText endpoint.
   const explicitPhoneJid = [alternate, target].find((jid) => jid.toLowerCase().endsWith('@s.whatsapp.net'));
   if (explicitPhoneJid) {
     return explicitPhoneJid.replace(/@s\.whatsapp\.net$/i, '').replace(/\D/g, '');
@@ -223,7 +246,9 @@ export async function resolveMessageNumber(instance, remoteJid, remoteJidAlt = '
   const numericTarget = targets.find((jid) => /^\d{7,20}$/.test(String(jid).replace(/\D/g, '')));
   if (numericTarget) return String(numericTarget).replace(/\D/g, '');
 
-  throw Object.assign(new Error('Could not resolve this WhatsApp chat to a sendable phone number. Refresh the conversations and try again.'), { status: 400 });
+  throw Object.assign(new Error(
+    `Could not resolve ${target} to a sendable WhatsApp number. Evolution did not expose a remoteJidAlt/@s.whatsapp.net mapping for this chat.`,
+  ), { status: 400 });
 }
 
 export { sendText };
