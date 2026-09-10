@@ -11,6 +11,7 @@ export type Session = {
 export type Chat = {
   id: string;
   remoteJid: string;
+  remoteJidAlt?: string;
   name: string;
   unreadCount: number;
   archived: boolean;
@@ -21,12 +22,27 @@ export type Chat = {
 export type Message = {
   id: string;
   remoteJid: string;
+  remoteJidAlt?: string;
   fromMe: boolean;
   text: string;
   timestamp: number;
   status: string | null;
   messageType: string;
   pushName: string | null;
+};
+
+export type Contact = {
+  id: string;
+  remoteJid: string;
+  remoteJidAlt: string;
+  name: string;
+  pushName: string;
+  number: string;
+  profilePicUrl: string | null;
+  isBusiness: boolean;
+  isGroup: boolean;
+  isSaved: boolean;
+  status: string | null;
 };
 
 export type ApiResponse = {
@@ -84,4 +100,8 @@ export const chatsApi = {
     `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
     { method: 'POST', body: JSON.stringify({ text }) },
   ),
+};
+
+export const contactsApi = {
+  list: (instance: string) => request<Contact[]>(`/contacts/${encodeURIComponent(instance)}`),
 };
