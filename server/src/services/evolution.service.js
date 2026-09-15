@@ -21,15 +21,10 @@ export class EvolutionError extends Error {
 
 function formatErrorValue(value) {
   if (typeof value === 'string') return value;
-  if (Array.isArray(value)) {
-    return value.flat(Infinity).map(formatErrorValue).filter(Boolean).join(', ');
-  }
+  if (Array.isArray(value)) return value.flat(Infinity).map(formatErrorValue).filter(Boolean).join(', ');
   if (value && typeof value === 'object') {
     if (typeof value.message === 'string') return value.message;
     if (typeof value.error === 'string') return value.error;
-    if (typeof value.jid === 'string' && value.exists === false) {
-      return `WhatsApp recipient does not exist: ${value.jid}`;
-    }
     try { return JSON.stringify(value); } catch { return '[object]'; }
   }
   return value == null ? '' : String(value);
@@ -48,10 +43,7 @@ function messageFrom(error) {
 
 async function request(options) {
   try {
-    return await client.request({
-      ...options,
-      headers: { apikey: config.evolutionKey, ...(options.headers || {}) },
-    });
+    return await client.request({ ...options, headers: { apikey: config.evolutionKey, ...(options.headers || {}) } });
   } catch (error) {
     throw new EvolutionError(messageFrom(error), error?.response?.status || 502, error?.response?.data);
   }
@@ -67,18 +59,9 @@ function normalize(item, connectionState) {
   const instance = item?.instance || item || {};
   const connection = instance.connectionStatus ?? item?.connectionStatus ?? item?.connection ?? instance.connection;
   const liveConnection = connectionState?.instance ?? connectionState;
-
   const instanceName = instance.instanceName || item?.instanceName || item?.name || liveConnection?.instanceName;
-  const state = extractState(liveConnection)
-    || extractState(connection)
-    || extractState(instance.state)
-    || extractState(item?.state)
-    || extractState(instance.status)
-    || extractState(item?.status);
-
-  const owner = instance.ownerJid || instance.owner || item?.ownerJid || item?.owner
-    || liveConnection?.ownerJid || liveConnection?.owner;
-
+  const state = extractState(liveConnection) || extractState(connection) || extractState(instance.state) || extractState(item?.state) || extractState(instance.status) || extractState(item?.status);
+  const owner = instance.ownerJid || instance.owner || item?.ownerJid || item?.owner || liveConnection?.ownerJid || liveConnection?.owner;
   return {
     instanceName,
     status: state,
@@ -99,17 +82,12 @@ export async function health() {
 export async function listInstances() {
   const { data } = await request({ method: 'GET', url: '/instance/fetchInstances' });
   const items = Array.isArray(data) ? data : Array.isArray(data?.instances) ? data.instances : data ? [data] : [];
-
   return Promise.all(items.map(async (item) => {
     const instance = item?.instance || item || {};
     const name = instance.instanceName || item?.instanceName || item?.name;
     if (!name) return null;
-
     try {
-      const { data: state } = await request({
-        method: 'GET',
-        url: `/instance/connectionState/${encodeURIComponent(name)}`,
-      });
+      const { data: state } = await request({ method: 'GET', url: `/instance/connectionState/${encodeURIComponent(name)}` });
       return normalize(item, state);
     } catch {
       return normalize(item);
@@ -122,33 +100,7 @@ export async function createInstance(instanceName) {
   const { data } = await request({
     method: 'POST',
     url: '/instance/create',
-    data: {
-      instanceName,
-      integration: 'WHATSAPP-BAILEYS',
-      token,
-      qrcode: true,
-      webhook: {
-        url: config.webhookUrl,
-        byEvents: false,
-        base64: false,
-        events: [
-          'APPLICATION_STARTUP',
-          'QRCODE_UPDATED',
-          'CONNECTION_UPDATE',
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'MESSAGES_DELETE',
-          'SEND_MESSAGE',
-          'CONTACTS_UPDATE',
-          'CHATS_UPDATE',
-          'CHATS_DELETE',
-          'GROUPS_UPSERT',
-          'GROUP_UPDATE',
-          'GROUP_PARTICIPANTS_UPDATE',
-          'PRESENCE_UPDATE',
-        ],
-      },
-    },
+    data: { instanceName, integration: 'WHATSAPP-BAILEYS', token, qrcode: true },
   });
   tokens.set(instanceName, token);
   return { instanceName, tokenKnown: true, ...data };
@@ -156,11 +108,12 @@ export async function createInstance(instanceName) {
 
 export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
-export const deleteInstance = async (instance) => {
+
+export async function deleteInstance(instance) {
   const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` });
   tokens.delete(instance);
   return data;
-};
+}
 
 export async function logoutInstance(instance) {
   try {
@@ -170,9 +123,3 @@ export async function logoutInstance(instance) {
     return (await request({ method: 'POST', url: `/instance/disconnect/${encodeURIComponent(instance)}` })).data;
   }
 }
-
-export const sendText = (instance, number, text) => request({
-  method: 'POST',
-  url: `/message/sendText/${encodeURIComponent(instance)}`,
-  data: { number, text },
-}).then((r) => r.data);
