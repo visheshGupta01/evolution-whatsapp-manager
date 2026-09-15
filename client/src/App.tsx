@@ -1,12 +1,9 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AppShell } from './components/layout/AppShell';
 import { Topbar } from './components/layout/Topbar';
-import { DashboardPage } from './pages/DashboardPage';
 import { SessionsPage } from './pages/SessionsPage';
-import { MessagesPage } from './pages/MessagesPage';
-import { ContactsPage } from './pages/ContactsPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SendMessagePage } from './pages/SendMessagePage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
@@ -22,11 +19,10 @@ export function App() {
     <AppShell>
       <Topbar onRefresh={() => void refetch()} onAdd={() => setCreateOpen(true)} />
       <main><Routes>
-        <Route path="/" element={<DashboardPage onCreate={() => setCreateOpen(true)} />} />
+        <Route path="/" element={<Navigate to="/sessions" replace />} />
         <Route path="/sessions" element={<SessionsPage onCreate={() => setCreateOpen(true)} />} />
-        <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/contacts" element={<ContactsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/send" element={<SendMessagePage />} />
+        <Route path="*" element={<Navigate to="/sessions" replace />} />
       </Routes></main>
       {createOpen && <CreateSessionModal close={() => setCreateOpen(false)} />}
     </AppShell>
