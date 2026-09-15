@@ -109,6 +109,24 @@ export async function createInstance(instanceName) {
 export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
 
+export async function sendText(instance, number, text, options = {}) {
+  const cleanNumber = String(number || '').replace(/[^0-9@.\-a-zA-Z]/g, '');
+  const message = String(text || '').trim();
+  if (!cleanNumber) throw new EvolutionError('Recipient number is required', 400);
+  if (!message) throw new EvolutionError('Message text is required', 400);
+  const { data } = await request({
+    method: 'POST',
+    url: `/message/sendText/${encodeURIComponent(instance)}`,
+    data: {
+      number: cleanNumber,
+      textMessage: { text: message },
+      delay: Math.max(0, Number(options.delayMs || 0)),
+      linkPreview: Boolean(options.linkPreview),
+    },
+  });
+  return data;
+}
+
 export async function deleteInstance(instance) {
   const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` });
   tokens.delete(instance);
