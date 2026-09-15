@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, FileText, Image, MessageSquare, Paperclip, Smartphone, Video, X } from 'lucide-react';
+import { Check, FileText, Image, MessageSquare, Paperclip, Smartphone, X } from 'lucide-react';
 import { useSessions } from '../hooks/use-sessions';
 import '../styles/send-message.css';
 
@@ -47,21 +47,16 @@ export function SendMessagePage() {
         <div className="sendLayout">
           <section className="sendCard">
             <div className="sendSection">
-              <div className="sendSectionHead">
-                <div className="stepNumber">1</div>
-                <div><h2>WhatsApp instance</h2><p>Select the connected number that will send the campaign.</p></div>
-              </div>
+              <div className="sendSectionHead"><div className="stepNumber">1</div><div><h2>WhatsApp instance</h2><p>Select the connected number that will send the campaign.</p></div></div>
               <div className="instanceGrid">
                 {connected.map((session) => {
                   const active = selectedInstance === session.instanceName;
-                  return (
-                    <button key={session.instanceName} className={`instanceOption ${active ? 'active' : ''}`} onClick={() => setInstance(session.instanceName || '')}>
-                      <div className="instanceIcon"><Smartphone size={18} /></div>
-                      <div className="instanceCopy"><strong>{session.profileName || session.instanceName}</strong><span>{session.number ? `+${String(session.number).replace(/^\+/, '')}` : session.instanceName}</span></div>
-                      <span className="onlineBadge"><i /> Connected</span>
-                      {active && <span className="selectedCheck"><Check size={13} /></span>}
-                    </button>
-                  );
+                  return <button key={session.instanceName} className={`instanceOption ${active ? 'active' : ''}`} onClick={() => setInstance(session.instanceName || '')}>
+                    <div className="instanceIcon"><Smartphone size={18} /></div>
+                    <div className="instanceCopy"><strong>{session.profileName || session.instanceName}</strong><span>{session.number ? `+${String(session.number).replace(/^\+/, '')}` : session.instanceName}</span></div>
+                    <span className="onlineBadge"><i /> Connected</span>
+                    {active && <span className="selectedCheck"><Check size={13} /></span>}
+                  </button>;
                 })}
               </div>
             </div>
@@ -69,21 +64,16 @@ export function SendMessagePage() {
             <div className="sendDivider" />
 
             <div className="sendSection">
-              <div className="sendSectionHead">
-                <div className="stepNumber">2</div>
-                <div><h2>Message type</h2><p>Choose the format you want to compose.</p></div>
-              </div>
+              <div className="sendSectionHead"><div className="stepNumber">2</div><div><h2>Message type</h2><p>Choose the format you want to compose.</p></div></div>
               <div className="messageTypeGrid">
                 {messageTypes.map(({ id, label, description, icon: Icon, available }) => {
                   const active = type === id;
-                  return (
-                    <button key={id} disabled={!available} className={`messageTypeOption ${active ? 'active' : ''} ${!available ? 'disabled' : ''}`} onClick={() => available && setType(id)}>
-                      <span className="typeIcon"><Icon size={17} /></span>
-                      <span className="typeCopy"><strong>{label}</strong><small>{description}</small></span>
-                      {!available && <span className="comingSoon">Soon</span>}
-                      {active && <span className="selectedCheck"><Check size={13} /></span>}
-                    </button>
-                  );
+                  return <button key={id} disabled={!available} className={`messageTypeOption ${active ? 'active' : ''} ${!available ? 'disabled' : ''}`} onClick={() => available && setType(id)}>
+                    <span className="typeIcon"><Icon size={17} /></span>
+                    <span className="typeCopy"><strong>{label}</strong><small>{description}</small></span>
+                    {!available && <span className="comingSoon">Soon</span>}
+                    {active && <span className="selectedCheck"><Check size={13} /></span>}
+                  </button>;
                 })}
               </div>
             </div>
@@ -91,10 +81,7 @@ export function SendMessagePage() {
             <div className="sendDivider" />
 
             <div className="sendSection composerSection">
-              <div className="sendSectionHead">
-                <div className="stepNumber">3</div>
-                <div><h2>Compose message</h2><p>Write the message that will be sent to your recipients.</p></div>
-              </div>
+              <div className="sendSectionHead"><div className="stepNumber">3</div><div><h2>Compose message</h2><p>Write the message that will be sent to your recipients.</p></div></div>
               <div className="composerGrid">
                 <div className="editorWrap">
                   <div className="editorToolbar"><span>Text message</span><span>{draft.length} characters</span></div>
@@ -105,9 +92,7 @@ export function SendMessagePage() {
                   <div className="previewHead"><span>Preview</span><span className="previewDevice"><Smartphone size={12} /> WhatsApp</span></div>
                   <div className="phonePreview">
                     <div className="previewTop"><div className="previewAvatar"><MessageSquare size={13} /></div><div><strong>Recipient</strong><span>WhatsApp</span></div></div>
-                    <div className="previewBody">
-                      {draft ? <div className="previewBubble"><p>{draft}</p><span>10:42 ✓✓</span></div> : <div className="previewPlaceholder">Your message preview will appear here.</div>}
-                    </div>
+                    <div className="previewBody">{draft ? <div className="previewBubble"><p>{draft}</p><span>10:42 ✓✓</span></div> : <div className="previewPlaceholder">Your message preview will appear here.</div>}</div>
                   </div>
                 </div>
               </div>
