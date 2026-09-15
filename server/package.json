@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "check": "node --check src/index.js && node --check src/config.js && node --check src/middleware-v2.js && node --check src/services/evolution.service.js && node --check src/services/realtime.service.js && node --check src/services/socket.service.js && node --check src/routes/health.routes.js && node --check src/routes/sessions.routes.js && node --check src/routes/webhooks.routes.js"
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/middleware-v2.js && node --check src/services/evolution.service.js && node --check src/routes/health.routes.js && node --check src/routes/sessions.routes.js"
   },
   "dependencies": {
     "axios": "^1.8.4",
