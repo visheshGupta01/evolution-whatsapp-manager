@@ -114,12 +114,14 @@ export async function sendText(instance, number, text, options = {}) {
   const message = String(text || '').trim();
   if (!cleanNumber) throw new EvolutionError('Recipient number is required', 400);
   if (!message) throw new EvolutionError('Message text is required', 400);
+
+  // Evolution API v2 expects the text field at the top level for sendText.
   const { data } = await request({
     method: 'POST',
     url: `/message/sendText/${encodeURIComponent(instance)}`,
     data: {
       number: cleanNumber,
-      textMessage: { text: message },
+      text: message,
       delay: Math.max(0, Number(options.delayMs || 0)),
       linkPreview: Boolean(options.linkPreview),
     },
