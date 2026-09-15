@@ -16,6 +16,22 @@ export type ApiResponse = {
   message?: string;
 };
 
+export type CampaignRecipient = {
+  phone: string;
+  name?: string;
+  company?: string;
+  custom1?: string;
+  custom2?: string;
+};
+
+export type CampaignResult = {
+  ok: boolean;
+  total: number;
+  sent: number;
+  failed: number;
+  results: Array<{ index: number; phone: string; ok: boolean; message?: string }>;
+};
+
 function resolveApiBase() {
   const configured = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
   if (!configured) return `${window.location.origin}/api`;
@@ -49,4 +65,12 @@ export const sessionsApi = {
   restart: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/restart`, { method: 'POST' }),
   disconnect: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/disconnect`, { method: 'POST' }),
   remove: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}`, { method: 'DELETE' }),
+};
+
+export const campaignsApi = {
+  sendText: (instance: string, text: string, recipients: CampaignRecipient[], delayMs = 1500) =>
+    request<CampaignResult>('/campaigns/text', {
+      method: 'POST',
+      body: JSON.stringify({ instance, text, recipients, delayMs }),
+    }),
 };
