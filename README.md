@@ -1,24 +1,34 @@
 # Evolution WhatsApp Manager
 
-A lightweight dashboard for managing multiple WhatsApp sessions simultaneously through Evolution API v2.
+A lightweight control center for managing multiple WhatsApp sessions through Evolution API v2, with the foundation for campaign message composition.
 
-## Features
+## Current features
 
-- Create unlimited Evolution API instances from one dashboard
+### Session management
+
+- Create Evolution API instances
 - Connect sessions and display QR codes
-- Poll and display live connection states
-- Restart, disconnect/logout, and permanently delete sessions
-- Send a test text message from any connected session
-- Global API key stays on the server; it is never sent to the browser
-- Responsive dashboard with search, filters, summary cards, and per-session actions
-- Dockerfile for the dashboard server
-- GitHub Actions CI
+- Poll and display connection states
+- Restart sessions
+- Disconnect/logout sessions
+- Permanently delete sessions
+- Search and manage multiple instances from one workspace
+
+### Send Message — Phase 1
+
+- Select a connected WhatsApp instance
+- Select the message format
+- Text message composer with character count
+- Live WhatsApp-style message preview
+- UI foundation for media, buttons, lists, recipient import, and campaigns
+
+Recipient XLSX import and actual campaign sending are intentionally not enabled yet; they will be added in the next phases.
 
 ## Architecture
 
 `React + Vite` → `Express API` → `Evolution API v2` → WhatsApp
 
-The manager is built against Evolution API v2's instance controller and instance-scoped message endpoints.
+All Evolution API access stays behind the Express server. The global Evolution API key is never sent to the browser.
 
 ## Requirements
 
@@ -49,7 +59,7 @@ EVOLUTION_API_KEY=your-global-api-key
 
 The app creates each instance with its own generated token, so instance operations remain isolated.
 
-## API routes exposed by this project
+## API routes
 
 - `GET /api/health`
 - `GET /api/sessions`
@@ -59,9 +69,8 @@ The app creates each instance with its own generated token, so instance operatio
 - `POST /api/sessions/:instance/restart`
 - `POST /api/sessions/:instance/disconnect`
 - `DELETE /api/sessions/:instance`
-- `POST /api/sessions/:instance/send-text`
 
-The text-message payload follows Evolution API's instance-scoped send-text route.
+Messaging, contacts, chat history, and realtime webhook endpoints are not part of the current application scope.
 
 ## Production
 
