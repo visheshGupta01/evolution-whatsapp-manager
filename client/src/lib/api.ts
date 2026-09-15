@@ -8,43 +8,6 @@ export type Session = {
   tokenKnown?: boolean;
 };
 
-export type Chat = {
-  id: string;
-  remoteJid: string;
-  remoteJidAlt: string;
-  name: string;
-  unreadCount: number;
-  archived: boolean;
-  timestamp: string | number | null;
-  lastMessage: string;
-};
-
-export type Message = {
-  id: string;
-  remoteJid: string;
-  remoteJidAlt?: string;
-  fromMe: boolean;
-  text: string;
-  timestamp: number;
-  status: string | null;
-  messageType: string;
-  pushName: string | null;
-};
-
-export type Contact = {
-  id: string;
-  remoteJid: string;
-  remoteJidAlt: string;
-  name: string;
-  pushName: string;
-  number: string;
-  profilePicUrl: string | null;
-  isBusiness: boolean;
-  isGroup: boolean;
-  isSaved: boolean;
-  status: string | null;
-};
-
 export type ApiResponse = {
   base64?: string;
   qrcode?: string;
@@ -86,22 +49,4 @@ export const sessionsApi = {
   restart: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/restart`, { method: 'POST' }),
   disconnect: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/disconnect`, { method: 'POST' }),
   remove: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}`, { method: 'DELETE' }),
-  sendText: (instance: string, number: string, text: string) => request(`/sessions/${encodeURIComponent(instance)}/send-text`, {
-    method: 'POST', body: JSON.stringify({ number, text }),
-  }),
-};
-
-export const chatsApi = {
-  list: (instance: string) => request<Chat[]>(`/chats/${encodeURIComponent(instance)}`),
-  messages: (instance: string, remoteJid: string) => request<Message[]>(
-    `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
-  ),
-  send: (instance: string, remoteJid: string, text: string, remoteJidAlt?: string) => request<Message>(
-    `/chats/${encodeURIComponent(instance)}/${encodeURIComponent(remoteJid)}/messages`,
-    { method: 'POST', body: JSON.stringify({ text, remoteJidAlt }) },
-  ),
-};
-
-export const contactsApi = {
-  list: (instance: string) => request<Contact[]>(`/contacts/${encodeURIComponent(instance)}`),
 };
