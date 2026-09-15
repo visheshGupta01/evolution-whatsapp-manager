@@ -129,6 +129,35 @@ export async function sendText(instance, number, text, options = {}) {
   return data;
 }
 
+export async function sendMedia(instance, number, media, options = {}) {
+  const cleanNumber = String(number || '').replace(/[^0-9@.\-a-zA-Z]/g, '');
+  const base64 = String(media?.base64 || '').replace(/^data:[^;]+;base64,/, '').trim();
+  const mediatype = String(media?.mediatype || '').trim().toLowerCase();
+  const mimetype = String(media?.mimetype || '').trim();
+  const fileName = String(media?.fileName || 'media').trim();
+  const caption = String(options.caption || '').trim();
+
+  if (!cleanNumber) throw new EvolutionError('Recipient number is required', 400);
+  if (!base64) throw new EvolutionError('Media data is required', 400);
+  if (!['image', 'video', 'document'].includes(mediatype)) throw new EvolutionError('Media type must be image, video or document', 400);
+  if (!mimetype) throw new EvolutionError('Media MIME type is required', 400);
+
+  const { data } = await request({
+    method: 'POST',
+    url: `/message/sendMedia/${encodeURIComponent(instance)}`,
+    data: {
+      number: cleanNumber,
+      mediatype,
+      mimetype,
+      media: base64,
+      fileName,
+      caption,
+      delay: Math.max(0, Number(options.delayMs || 0)),
+    },
+  });
+  return data;
+}
+
 export async function deleteInstance(instance) {
   const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` });
   tokens.delete(instance);
