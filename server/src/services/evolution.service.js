@@ -109,18 +109,21 @@ export async function createInstance(instanceName) {
 export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
 
+function cleanNumber(value) {
+  return String(value || '').replace(/[^0-9@.\-a-zA-Z]/g, '');
+}
+
 export async function sendText(instance, number, text, options = {}) {
-  const cleanNumber = String(number || '').replace(/[^0-9@.\-a-zA-Z]/g, '');
+  const cleanNumberValue = cleanNumber(number);
   const message = String(text || '').trim();
-  if (!cleanNumber) throw new EvolutionError('Recipient number is required', 400);
+  if (!cleanNumberValue) throw new EvolutionError('Recipient number is required', 400);
   if (!message) throw new EvolutionError('Message text is required', 400);
 
-  // Evolution API v2 expects the text field at the top level for sendText.
   const { data } = await request({
     method: 'POST',
     url: `/message/sendText/${encodeURIComponent(instance)}`,
     data: {
-      number: cleanNumber,
+      number: cleanNumberValue,
       text: message,
       delay: Math.max(0, Number(options.delayMs || 0)),
       linkPreview: Boolean(options.linkPreview),
@@ -130,14 +133,14 @@ export async function sendText(instance, number, text, options = {}) {
 }
 
 export async function sendMedia(instance, number, media, options = {}) {
-  const cleanNumber = String(number || '').replace(/[^0-9@.\-a-zA-Z]/g, '');
+  const cleanNumberValue = cleanNumber(number);
   const base64 = String(media?.base64 || '').replace(/^data:[^;]+;base64,/, '').trim();
   const mediatype = String(media?.mediatype || '').trim().toLowerCase();
   const mimetype = String(media?.mimetype || '').trim();
   const fileName = String(media?.fileName || 'media').trim();
   const caption = String(options.caption || '').trim();
 
-  if (!cleanNumber) throw new EvolutionError('Recipient number is required', 400);
+  if (!cleanNumberValue) throw new EvolutionError('Recipient number is required', 400);
   if (!base64) throw new EvolutionError('Media data is required', 400);
   if (!['image', 'video', 'document'].includes(mediatype)) throw new EvolutionError('Media type must be image, video or document', 400);
   if (!mimetype) throw new EvolutionError('Media MIME type is required', 400);
@@ -146,13 +149,62 @@ export async function sendMedia(instance, number, media, options = {}) {
     method: 'POST',
     url: `/message/sendMedia/${encodeURIComponent(instance)}`,
     data: {
-      number: cleanNumber,
+      number: cleanNumberValue,
       mediatype,
       mimetype,
       media: base64,
       fileName,
       caption,
       delay: Math.max(0, Number(options.delayMs || 0)),
+    },
+  });
+  return data;
+}
+
+export async function sendButtons(instance, number, payload) {
+  const cleanNumberValue = cleanNumber(number);
+  const title = String(payload?.title || '').trim();
+  const buttons = Array.isArray(payload?.buttons) ? payload.buttons : [];
+  if (!cleanNumberValue) throw new EvolutionError('Recipient number is required', 400);
+  if (!title) throw new EvolutionError('Button title is required', 400);
+  if (!buttons.length || buttons.length > 3) throw new EvolutionError('Buttons require 1–3 items', 400);
+
+  const { data } = await request({
+    method: 'POST',
+    url: `/message/sendButtons/${encodeURIComponent(instance)}`,
+    data: {
+      number: cleanNumberValue,
+      title,
+      description: String(payload?.description || '').trim(),
+      footer: String(payload?.footer || '').trim(),
+      buttons,
+    },
+  });
+  return data;
+}
+
+export async function sendList(instance, number, payload) {
+  const cleanNumberValue = cleanNumber(number);
+  const title = String(payload?.title || '').trim();
+  const buttonText = String(payload?.buttonText || '').trim();
+  const sections = Array.isArray(payload?.sections) ? payload.sections : [];
+  if (!cleanNumberValue) throw new EvolutionError('Recipient number is required', 400);
+  if (!title) throw new EvolutionError('List title is required', 400);
+  if (!buttonText) throw new EvolutionError('List button text is required', 400);
+  if (!sections.length) throw new EvolutionError('At least one list section is required', 400);
+  const rowCount = sections.reduce((total, section) => total + (Array.isArray(section?.rows) ? section.rows.length : 0), 0);
+  if (rowCount < 1 || rowCount > 10) throw new EvolutionError('List requires 1–10 rows', 400);
+
+  const { data } = await request({
+    method: 'POST',
+    url: `/message/sendList/${encodeURIComponent(instance)}`,
+    data: {
+      number: cleanNumberValue,
+      title,
+      description: String(payload?.description || '').trim(),
+      footerText: String(payload?.footerText || '').trim(),
+      buttonText,
+      sections,
     },
   });
   return data;
