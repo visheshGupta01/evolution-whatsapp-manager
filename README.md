@@ -1,6 +1,6 @@
 # Evolution WhatsApp Manager
 
-A lightweight control center for managing multiple WhatsApp sessions through Evolution API v2, with the foundation for campaign message composition.
+A lightweight control center for managing multiple WhatsApp sessions through Evolution API v2, with a text campaign workflow.
 
 ## Current features
 
@@ -14,21 +14,30 @@ A lightweight control center for managing multiple WhatsApp sessions through Evo
 - Permanently delete sessions
 - Search and manage multiple instances from one workspace
 
-### Send Message — Phase 1
+### Send Message — Phase 2
 
 - Select a connected WhatsApp instance
-- Select the message format
+- Import XLSX, XLS or CSV recipient files
+- Required `phone`/`number`/`mobile`/`whatsapp`-style column detection
+- Optional `name`, `company`, `custom1`, and `custom2` fields
+- Phone validation and duplicate detection
+- Recipient preview with valid/invalid counts
+- Downloadable XLSX recipient template
 - Text message composer with character count
-- Live WhatsApp-style message preview
-- UI foundation for media, buttons, lists, recipient import, and campaigns
+- `{{name}}`, `{{company}}`, `{{custom1}}`, and `{{custom2}}` personalization
+- Live WhatsApp-style personalized preview
+- Sequential text campaign sending through the Express backend
+- Per-recipient success/failure results
+- Conservative server-side pacing with a 1.2 second minimum between recipients
+- Phase 2 limit of 250 spreadsheet rows per campaign
 
-Recipient XLSX import and actual campaign sending are intentionally not enabled yet; they will be added in the next phases.
+Media, buttons, lists, persistent queues, campaign history, and reporting are not enabled yet.
 
 ## Architecture
 
 `React + Vite` → `Express API` → `Evolution API v2` → WhatsApp
 
-All Evolution API access stays behind the Express server. The global Evolution API key is never sent to the browser.
+The browser parses the recipient spreadsheet locally and sends only validated recipient data to the Express API. All Evolution API access stays behind the Express server. The global Evolution API key is never sent to the browser.
 
 ## Requirements
 
@@ -61,6 +70,8 @@ The app creates each instance with its own generated token, so instance operatio
 
 ## API routes
 
+### Health and sessions
+
 - `GET /api/health`
 - `GET /api/sessions`
 - `POST /api/sessions`
@@ -70,12 +81,20 @@ The app creates each instance with its own generated token, so instance operatio
 - `POST /api/sessions/:instance/disconnect`
 - `DELETE /api/sessions/:instance`
 
-Messaging, contacts, chat history, and realtime webhook endpoints are not part of the current application scope.
+### Campaigns
+
+- `POST /api/campaigns/text`
+
+The campaign endpoint accepts a connected instance, message template, validated recipients, and an optional delay. It sends recipients sequentially through Evolution API's `message/sendText` endpoint and returns per-recipient results.
+
+Messaging outside the campaign workflow, contacts, chat history, and realtime webhook endpoints are not part of the current application scope.
 
 ## Production
 
 Build the client with `npm run build`, then serve `client/dist` with a CDN/reverse proxy and run the Express server privately. Do not expose `EVOLUTION_API_KEY` to client-side code.
 
+For larger campaigns, move sending into a persistent queue/worker before increasing the recipient limit or throughput.
+
 ## Notes
 
-This project manages sessions that belong to an Evolution API deployment; it does not replace Evolution API itself. WhatsApp usage is subject to Meta/WhatsApp terms and the limits of the selected connection method.
+Only send messages to recipients who have appropriately opted in, and respect WhatsApp/Meta policies and applicable laws. This project manages sessions and campaign delivery through an Evolution API deployment; it does not replace Evolution API itself.
