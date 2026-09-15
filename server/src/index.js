@@ -15,8 +15,8 @@ registerMiddleware(app);
 app.get('/api', (_req, res) => res.json({
   ok: true,
   name: 'Evolution WhatsApp Manager API',
-  version: '1.6.0',
-  features: { sessions: true, textCampaigns: true, mediaCampaigns: true },
+  version: '1.7.0',
+  features: { sessions: true, textCampaigns: true, mediaCampaigns: true, interactiveCampaigns: true },
 }));
 app.use('/api/health', healthRouter);
 app.use('/api/sessions', sessionsRouter);
@@ -32,16 +32,11 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 const server = http.createServer(app);
-
 server.listen(config.port, () => {
   console.log(`[server] Evolution WhatsApp Manager listening on http://localhost:${config.port}`);
   console.log(`[server] Evolution API: ${config.evolutionUrl || '(not configured)'}`);
   console.log(`[server] API key: ${config.evolutionKey ? 'configured' : 'MISSING'}`);
 });
-
-const shutdown = (signal) => {
-  console.log(`[server] ${signal} received, shutting down`);
-  server.close(() => process.exit(0));
-};
+const shutdown = (signal) => { console.log(`[server] ${signal} received, shutting down`); server.close(() => process.exit(0)); };
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
