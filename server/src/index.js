@@ -15,8 +15,8 @@ registerMiddleware(app);
 app.get('/api', (_req, res) => res.json({
   ok: true,
   name: 'Evolution WhatsApp Manager API',
-  version: '1.5.0',
-  features: { sessions: true, textCampaigns: true },
+  version: '1.6.0',
+  features: { sessions: true, textCampaigns: true, mediaCampaigns: true },
 }));
 app.use('/api/health', healthRouter);
 app.use('/api/sessions', sessionsRouter);
