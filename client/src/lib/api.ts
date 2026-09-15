@@ -32,6 +32,13 @@ export type CampaignResult = {
   results: Array<{ index: number; phone: string; ok: boolean; message?: string }>;
 };
 
+export type CampaignMedia = {
+  base64: string;
+  mediatype: 'image' | 'video' | 'document';
+  mimetype: string;
+  fileName: string;
+};
+
 function resolveApiBase() {
   const configured = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
   if (!configured) return `${window.location.origin}/api`;
@@ -72,5 +79,10 @@ export const campaignsApi = {
     request<CampaignResult>('/campaigns/text', {
       method: 'POST',
       body: JSON.stringify({ instance, text, recipients, delayMs }),
+    }),
+  sendMedia: (instance: string, media: CampaignMedia, caption: string, recipients: CampaignRecipient[], delayMs = 1500) =>
+    request<CampaignResult>('/campaigns/media', {
+      method: 'POST',
+      body: JSON.stringify({ instance, media, caption, recipients, delayMs }),
     }),
 };
