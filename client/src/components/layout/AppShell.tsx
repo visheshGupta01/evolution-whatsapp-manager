@@ -1,14 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { Activity, ContactRound, MessageCircle, Settings2, Smartphone, Zap } from 'lucide-react';
+import { Send, Smartphone, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAppStore } from '../../stores/app-store';
 
 const items = [
-  { to: '/', label: 'Overview', icon: Activity },
   { to: '/sessions', label: 'Sessions', icon: Smartphone },
-  { to: '/messages', label: 'Messages', icon: MessageCircle },
-  { to: '/contacts', label: 'Contacts', icon: ContactRound },
-  { to: '/settings', label: 'Settings', icon: Settings2 },
+  { to: '/send', label: 'Send Message', icon: Send },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -23,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="sidebarNav" aria-label="Primary navigation">
           {items.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => isActive ? 'navItem active' : 'navItem'}>
+            <NavLink key={to} to={to} className={({ isActive }) => isActive ? 'navItem active' : 'navItem'}>
               <Icon size={17} /><span>{label}</span>
             </NavLink>
           ))}
