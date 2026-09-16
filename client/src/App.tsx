@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell';
 import { Topbar } from './components/layout/Topbar';
 import { SessionsPage } from './pages/SessionsPage';
 import { SendMessagePage } from './pages/SendMessagePage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
@@ -19,6 +20,7 @@ export function App() {
         <Route path="/" element={<Navigate to="/sessions" replace />} />
         <Route path="/sessions" element={<SessionsPage onCreate={() => setCreateOpen(true)} />} />
         <Route path="/send" element={<SendMessagePage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
         <Route path="*" element={<Navigate to="/sessions" replace />} />
       </Routes></main>
       {createOpen && <CreateSessionModal close={() => setCreateOpen(false)} />}
