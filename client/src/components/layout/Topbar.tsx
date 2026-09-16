@@ -5,7 +5,6 @@ import { useAppStore } from '../../stores/app-store';
 const titles: Record<string, string> = {
   '/sessions': 'Sessions',
   '/send': 'Send Message',
-  '/send/interactive': 'Interactive Message',
 };
 
 export function Topbar({ onRefresh, onAdd }: { onRefresh: () => void; onAdd: () => void }) {
