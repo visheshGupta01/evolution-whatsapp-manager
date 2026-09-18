@@ -11,6 +11,16 @@ export type CampaignListRow = { title: string; description?: string; rowId: stri
 export type CampaignListSection = { title: string; rows: CampaignListRow[] };
 export type CampaignList = { title: string; description?: string; footerText?: string; buttonText: string; sections: CampaignListSection[] };
 export type CampaignJobStatus = 'queued' | 'running' | 'paused' | 'cancelled' | 'completed' | 'failed';
+export type CampaignAnalytics = {
+  days: number;
+  overview: {
+    campaigns: number; completed: number; running: number; queued: number; paused: number; cancelled: number; failedCampaigns: number;
+    totalRecipients: number; sent: number; failed: number; remaining: number; delivered: number; read: number; played: number;
+    deliveryRate: number; readRate: number; failureRate: number;
+  };
+  daily: { date: string; sent: number; failed: number; delivered: number; read: number }[];
+  campaigns: { id: string; name: string; type: string; status: string; total: number; sent: number; failed: number; messageCount: number; delivered: number; read: number; deliveryRate: number; readRate: number }[];
+};
 export type CampaignJob = CampaignResult & {
   id: string;
   name: string;
@@ -53,6 +63,7 @@ export const sessionsApi = {
 };
 export const campaignJobsApi = {
   list: (limit = 50) => request<CampaignJob[]>(`/campaign-jobs?limit=${limit}`),
+  analytics: (days = 30) => request<CampaignAnalytics>(`/campaign-jobs/analytics?days=${days}`),
   get: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}`),
   pause: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/pause`, { method: 'POST' }),
   resume: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/resume`, { method: 'POST' }),
