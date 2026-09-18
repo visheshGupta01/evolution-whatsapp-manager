@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { pool } from '../services/db.js';
 import { createCampaign, getCampaign, listCampaigns, updateCampaign } from '../services/campaign.store.js';
 import { cancelCampaign, enqueueCampaign, getQueueSize, pauseCampaign, resumeCampaign } from '../services/campaign.worker.js';
+import { enforceCampaignSafety } from '../services/campaign.safety.js';
 
 export const campaignJobsRouter = Router();
 
 const MAX_RECIPIENTS = 250;
-const MIN_DELAY_MS = 1200;
+const MIN_DELAY_MS = 1500;
 const MAX_DELAY_MS = 10000;
 const MAX_BUTTONS = 3;
 const MAX_LIST_ROWS = 10;
@@ -266,6 +267,7 @@ campaignJobsRouter.post('/:id/cancel', async (req, res, next) => {
 campaignJobsRouter.post('/', async (req, res, next) => {
   try {
     const input = validateCampaign(req.body);
+    await enforceCampaignSafety(input);
     const campaign = await createCampaign({ ...input, name: req.body?.name });
     enqueueCampaign(campaign.id);
     return res.status(202).json(campaign);
