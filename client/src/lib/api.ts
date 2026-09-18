@@ -1,7 +1,8 @@
 export type Session = { instanceName?: string; status?: string; state?: string; ownerJid?: string; profileName?: string; number?: string; tokenKnown?: boolean };
 export type ApiResponse = { base64?: string; qrcode?: string; qr?: string; code?: string; message?: string };
 export type CampaignRecipient = { phone: string; name?: string; company?: string; custom1?: string; custom2?: string };
-export type CampaignResult = { ok: boolean; total: number; sent: number; failed: number; results: Array<{ index: number; phone: string; ok: boolean; message?: string }> };
+export type CampaignRecipientResult = { index: number; phone: string; ok: boolean; message?: string; timestamp?: string };
+export type CampaignResult = { ok: boolean; total: number; sent: number; failed: number; results: CampaignRecipientResult[] };
 export type CampaignMedia = { base64: string; mediatype: 'image' | 'video' | 'document'; mimetype: string; fileName: string };
 export type CampaignButton = { type: 'reply' | 'copy' | 'url' | 'call'; id?: string; displayText: string; url?: string; copyCode?: string; phoneNumber?: string };
 export type CampaignButtons = { title: string; description?: string; footer?: string; buttons: CampaignButton[] };
