@@ -11,6 +11,7 @@ import { campaignJobsRouter } from './routes/campaign-jobs.routes.js';
 import { recoverCampaigns } from './services/campaign.worker.js';
 import { initDatabase, closeDatabase } from './services/db.js';
 import { templatesRouter } from './routes/templates.routes.js';
+import { webhooksRouter } from './routes/webhooks.routes.js';
 
 assertConfiguration();
 await initDatabase();
@@ -28,6 +29,7 @@ app.use('/api/sessions', sessionsRouter);
 app.use('/api/campaigns', campaignsRouter);
 app.use('/api/campaign-jobs', campaignJobsRouter);
 app.use('/api/templates', templatesRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, '../../client/dist');
