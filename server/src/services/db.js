@@ -39,6 +39,17 @@ export async function initDatabase() {
       PRIMARY KEY (campaign_id, recipient_index)
     );
     CREATE INDEX IF NOT EXISTS campaign_results_status_idx ON campaign_results(campaign_id, ok);
+    CREATE TABLE IF NOT EXISTS campaign_messages (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      recipient_index INTEGER NOT NULL,
+      message_id TEXT NOT NULL,
+      message_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      status_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (campaign_id, message_id)
+    );
+    CREATE INDEX IF NOT EXISTS campaign_messages_lookup_idx ON campaign_messages(message_id);
+    CREATE INDEX IF NOT EXISTS campaign_messages_recipient_idx ON campaign_messages(campaign_id, recipient_index);
     CREATE TABLE IF NOT EXISTS templates (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL,
       data JSONB NOT NULL DEFAULT '{}'::jsonb,
