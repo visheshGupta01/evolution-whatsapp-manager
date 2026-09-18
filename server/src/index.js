@@ -7,6 +7,7 @@ import { registerMiddleware, errorHandler } from './middleware-v2.js';
 import { healthRouter } from './routes/health.routes.js';
 import { sessionsRouter } from './routes/sessions.routes.js';
 import { campaignsRouter } from './routes/campaigns.routes.js';
+import { campaignJobsRouter } from './routes/campaign-jobs.routes.js';
 
 assertConfiguration();
 const app = express();
@@ -16,11 +17,12 @@ app.get('/api', (_req, res) => res.json({
   ok: true,
   name: 'Evolution WhatsApp Manager API',
   version: '1.7.0',
-  features: { sessions: true, textCampaigns: true, mediaCampaigns: true, interactiveCampaigns: true },
+  features: { sessions: true, textCampaigns: true, mediaCampaigns: true, interactiveCampaigns: true, persistentCampaigns: true },
 }));
 app.use('/api/health', healthRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/campaigns', campaignsRouter);
+app.use('/api/campaign-jobs', campaignJobsRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, '../../client/dist');
