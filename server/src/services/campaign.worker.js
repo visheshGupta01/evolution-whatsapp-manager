@@ -2,6 +2,7 @@ import { getCampaign, listCampaigns, updateCampaign } from './campaign.store.js'
 import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
 
 const queue = [];
+const controls = new Map();
 let running = false;
 
 function normalizeNumber(value) { return String(value ?? '').trim().replace(/[^0-9]/g, ''); }
@@ -19,14 +20,29 @@ export function enqueueCampaign(id) {
 }
 
 export function getQueueSize() { return queue.length + (running ? 1 : 0); }
+export function pauseCampaign(id) { controls.set(id, 'paused'); }
+export function resumeCampaign(id) { controls.set(id, 'resumed'); enqueueCampaign(id); }
+export function cancelCampaign(id) { controls.set(id, 'cancelled'); }
 
 async function processCampaign(id) {
   let campaign = await getCampaign(id);
-  if (!campaign || campaign.status !== 'queued') return;
+  if (!campaign || !['queued', 'paused'].includes(campaign.status)) return;
+  if (campaign.status === 'paused' && controls.get(id) !== 'resumed') return;
+  controls.delete(id);
   campaign = await updateCampaign(id, { status: 'running', startedAt: new Date().toISOString() });
   const results = [];
 
-  for (let index = 0; index < campaign.recipients.length; index += 1) {
+  for (let index = campaign.results?.length || 0; index < campaign.recipients.length; index += 1) {
+    const control = controls.get(id);
+    if (control === 'cancelled') {
+      controls.delete(id);
+      await updateCampaign(id, { status: 'cancelled' });
+      return;
+    }
+    if (control === 'paused') {
+      await updateCampaign(id, { status: 'paused' });
+      return;
+    }
     const recipient = campaign.recipients[index] || {};
     const number = normalizeNumber(recipient.phone || recipient.number);
     let result;
