@@ -10,6 +10,8 @@ export type CampaignButtons = { title: string; description?: string; footer?: st
 export type CampaignListRow = { title: string; description?: string; rowId: string };
 export type CampaignListSection = { title: string; rows: CampaignListRow[] };
 export type CampaignList = { title: string; description?: string; footerText?: string; buttonText: string; sections: CampaignListSection[] };
+export type AudienceSummary = { id:string; name:string; description:string; total:number; createdAt:string; updatedAt:string };
+export type Audience = AudienceSummary & { recipients: CampaignRecipient[] };
 export type CampaignJobStatus = 'queued' | 'running' | 'paused' | 'cancelled' | 'completed' | 'failed';
 export type CampaignAnalytics = {
   days: number;
@@ -61,6 +63,14 @@ export const sessionsApi = {
   configureWebhook: (instance: string, url?: string) => request(`/sessions/${encodeURIComponent(instance)}/webhook`, { method: 'POST', body: JSON.stringify({ url }) }),
   remove: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}`, { method: 'DELETE' }),
 };
+export const audiencesApi = {
+  list: () => request<AudienceSummary[]>('/audiences'),
+  get: (id: string) => request<Audience>(`/audiences/${encodeURIComponent(id)}`),
+  create: (name: string, description: string, recipients: CampaignRecipient[]) => request<Audience>('/audiences', { method:'POST', body:JSON.stringify({ name, description, recipients }) }),
+  update: (id: string, name: string, description: string, recipients: CampaignRecipient[]) => request<Audience>(`/audiences/${encodeURIComponent(id)}`, { method:'PUT', body:JSON.stringify({ name, description, recipients }) }),
+  remove: (id: string) => request<void>(`/audiences/${encodeURIComponent(id)}`, { method:'DELETE' }),
+};
+
 export const campaignJobsApi = {
   list: (limit = 50) => request<CampaignJob[]>(`/campaign-jobs?limit=${limit}`),
   analytics: (days = 30) => request<CampaignAnalytics>(`/campaign-jobs/analytics?days=${days}`),
