@@ -1,4 +1,4 @@
-export type TemplateType = 'text' | 'media-text' | 'buttons' | 'list';
+export type TemplateType = 'text' | 'media-text' | 'buttons' | 'list' | 'media-buttons' | 'media-list';
 
 export type TemplateButton = {
   type: 'reply';
@@ -83,5 +83,5 @@ export function consumeTemplateHandoff(): MessageTemplate | null {
 }
 
 export function templateTypeLabel(type: TemplateType) {
-  return ({ text: 'Text', 'media-text': 'Media + Text', buttons: 'Buttons', list: 'List' })[type];
+  return ({ text: 'Text', 'media-text': 'Media + Text', buttons: 'Buttons', list: 'List', 'media-buttons': 'Media + Buttons', 'media-list': 'Media + List' })[type];
 }
