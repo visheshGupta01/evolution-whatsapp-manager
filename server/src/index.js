@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health.routes.js';
 import { sessionsRouter } from './routes/sessions.routes.js';
 import { campaignsRouter } from './routes/campaigns.routes.js';
 import { campaignJobsRouter } from './routes/campaign-jobs.routes.js';
+import { recoverCampaigns } from './services/campaign.worker.js';
 
 assertConfiguration();
 const app = express();
@@ -35,6 +36,7 @@ app.use(errorHandler);
 
 const server = http.createServer(app);
 server.listen(config.port, () => {
+  void recoverCampaigns().catch((error) => console.error('[campaign-worker] recovery failed:', error));
   console.log(`[server] Evolution WhatsApp Manager listening on http://localhost:${config.port}`);
   console.log(`[server] Evolution API: ${config.evolutionUrl || '(not configured)'}`);
   console.log(`[server] API key: ${config.evolutionKey ? 'configured' : 'MISSING'}`);
