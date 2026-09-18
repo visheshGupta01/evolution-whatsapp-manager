@@ -8,6 +8,7 @@ export const config = Object.freeze({
   clientOrigin: env('CLIENT_ORIGIN', 'http://localhost:5173'),
   evolutionUrl: env('EVOLUTION_API_URL').replace(/\/+$/, ''),
   evolutionKey: env('EVOLUTION_API_KEY'),
+  databaseUrl: env('DATABASE_URL'),
   evolutionTimeoutMs: Number(process.env.EVOLUTION_TIMEOUT_MS || 60000),
   bodyLimit: env('BODY_LIMIT', '12mb'),
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60000),
