@@ -1,7 +1,8 @@
 export type Session = { instanceName?: string; status?: string; state?: string; ownerJid?: string; profileName?: string; number?: string; tokenKnown?: boolean };
 export type ApiResponse = { base64?: string; qrcode?: string; qr?: string; code?: string; message?: string };
 export type CampaignRecipient = { phone: string; name?: string; company?: string; custom1?: string; custom2?: string };
-export type CampaignRecipientResult = { index: number; phone: string; ok: boolean; message?: string; timestamp?: string };
+export type CampaignDeliveryStatus = { messageId: string; type: string; status: string; updatedAt: string };
+export type CampaignRecipientResult = { index: number; phone: string; ok: boolean; message?: string; timestamp?: string; deliveryStatuses?: CampaignDeliveryStatus[] };
 export type CampaignResult = { ok: boolean; total: number; sent: number; failed: number; results: CampaignRecipientResult[] };
 export type CampaignMedia = { base64: string; mediatype: 'image' | 'video' | 'document'; mimetype: string; fileName: string };
 export type CampaignButton = { type: 'reply' | 'copy' | 'url' | 'call'; id?: string; displayText: string; url?: string; copyCode?: string; phoneNumber?: string };
@@ -47,6 +48,7 @@ export const sessionsApi = {
   connect: (instance: string) => request<ApiResponse>(`/sessions/${encodeURIComponent(instance)}/connect`),
   restart: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/restart`, { method: 'POST' }),
   disconnect: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}/disconnect`, { method: 'POST' }),
+  configureWebhook: (instance: string, url?: string) => request(`/sessions/${encodeURIComponent(instance)}/webhook`, { method: 'POST', body: JSON.stringify({ url }) }),
   remove: (instance: string) => request(`/sessions/${encodeURIComponent(instance)}`, { method: 'DELETE' }),
 };
 export const campaignJobsApi = {
