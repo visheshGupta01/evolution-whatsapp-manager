@@ -20,6 +20,7 @@ export function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [actionId, setActionId] = useState('');
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -27,6 +28,13 @@ export function CampaignsPage() {
     try { setCampaigns(await campaignJobsApi.list(100)); }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Could not load campaigns.'); }
     finally { setLoading(false); setRefreshing(false); }
+  };
+
+  const action = async (id: string, operation: 'pause' | 'resume' | 'cancel') => {
+    setActionId(id);
+    try { await campaignJobsApi[operation](id); await load(true); toast.success(operation === 'cancel' ? 'Campaign cancelled' : operation === 'pause' ? 'Campaign paused' : 'Campaign resumed'); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Campaign action failed.'); }
+    finally { setActionId(''); }
   };
 
   useEffect(() => {
