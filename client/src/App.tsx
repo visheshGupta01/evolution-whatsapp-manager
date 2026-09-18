@@ -6,6 +6,7 @@ import { SessionsPage } from './pages/SessionsPage';
 import { SendMessagePage } from './pages/SendMessagePage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { CampaignsPage } from './pages/CampaignsPage';
+import { AudiencesPage } from './pages/AudiencesPage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
@@ -23,6 +24,7 @@ export function App() {
         <Route path="/send" element={<SendMessagePage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
+        <Route path="/audiences" element={<AudiencesPage />} />
         <Route path="*" element={<Navigate to="/sessions" replace />} />
       </Routes></main>
       {createOpen && <CreateSessionModal close={() => setCreateOpen(false)} />}
