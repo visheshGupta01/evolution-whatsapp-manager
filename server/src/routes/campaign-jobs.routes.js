@@ -22,7 +22,7 @@ function validateCampaign(body) {
   const payload = body?.payload && typeof body.payload === 'object' ? body.payload : {};
   if (type === 'text' && !String(payload.text || '').trim()) throw Object.assign(new Error('Message text is required.'), { status: 400 });
   if (['media', 'media-text', 'media-buttons', 'media-list'].includes(type) && !payload.media?.base64) throw Object.assign(new Error('Media is required.'), { status: 400 });
-  if (['media-text', 'media-buttons', 'media-list'].includes(type) && !String(payload.caption || '').trim()) throw Object.assign(new Error('Caption is required.'), { status: 400 });
+  if (type === 'media-text' && !String(payload.caption || '').trim()) throw Object.assign(new Error('Caption is required.'), { status: 400 });
   if (['buttons', 'media-buttons'].includes(type) && (!String(payload.title || '').trim() || !Array.isArray(payload.buttons) || !payload.buttons.length || payload.buttons.length > MAX_BUTTONS)) throw Object.assign(new Error('Button campaign requires a title and 1–3 buttons.'), { status: 400 });
   if (['list', 'media-list'].includes(type)) {
     const sections = Array.isArray(payload.sections) ? payload.sections : [];
