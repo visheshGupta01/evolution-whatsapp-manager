@@ -4,7 +4,7 @@ import { Check, Download, FileSpreadsheet, FileText, Image, List, Loader2, Messa
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useSessions } from '../hooks/use-sessions';
-import { campaignJobsApi, campaignsApi, type CampaignButton, type CampaignList, type CampaignListRow, type CampaignMedia, type CampaignRecipient, type CampaignResult } from '../lib/api';
+import { campaignJobsApi, type CampaignButton, type CampaignList, type CampaignListRow, type CampaignMedia, type CampaignRecipient, type CampaignResult } from '../lib/api';
 import { consumeTemplateHandoff, type MessageTemplate } from '../lib/template-store';
 import '../styles/send-message.css';
 import '../styles/send-media.css';
