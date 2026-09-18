@@ -1,0 +1,104 @@
+import { getCampaign, updateCampaign } from './campaign.store.js';
+import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
+
+const queue = [];
+let running = false;
+
+function normalizeNumber(value) { return String(value ?? '').trim().replace(/[^0-9]/g, ''); }
+function personalize(template, recipient) {
+  return String(template ?? '').replace(/\{\{\s*(name|company|custom1|custom2)\s*\}\}/gi, (_, key) => {
+    const value = recipient?.[key.toLowerCase()];
+    return value == null ? '' : String(value);
+  });
+}
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+export function enqueueCampaign(id) {
+  if (!queue.includes(id)) queue.push(id);
+  void drain();
+}
+
+export function getQueueSize() { return queue.length + (running ? 1 : 0); }
+
+async function processCampaign(id) {
+  let campaign = await getCampaign(id);
+  if (!campaign || campaign.status !== 'queued') return;
+  campaign = await updateCampaign(id, { status: 'running', startedAt: new Date().toISOString() });
+  const results = [];
+
+  for (let index = 0; index < campaign.recipients.length; index += 1) {
+    const recipient = campaign.recipients[index] || {};
+    const number = normalizeNumber(recipient.phone || recipient.number);
+    let result;
+    if (!number || number.length < 8 || number.length > 15) {
+      result = { index, phone: recipient.phone || recipient.number || '', ok: false, message: 'Invalid phone number.' };
+    } else {
+      try {
+        const payload = campaign.payload || {};
+        if (campaign.type === 'text') {
+          await sendText(campaign.instance, number, personalize(payload.text, recipient), { delayMs: 0 });
+        } else if (campaign.type === 'media' || campaign.type === 'media-text') {
+          await sendMedia(campaign.instance, number, payload.media, { caption: personalize(payload.caption || '', recipient), delayMs: 0 });
+        } else if (campaign.type === 'buttons') {
+          await sendButtons(campaign.instance, number, {
+            title: personalize(payload.title, recipient),
+            description: personalize(payload.description, recipient),
+            footer: personalize(payload.footer, recipient),
+            buttons: (payload.buttons || []).map((button) => ({
+              ...button,
+              id: personalize(button.id, recipient),
+              displayText: personalize(button.displayText, recipient),
+              url: button.url ? personalize(button.url, recipient) : undefined,
+              copyCode: button.copyCode ? personalize(button.copyCode, recipient) : undefined,
+              phoneNumber: button.phoneNumber ? personalize(button.phoneNumber, recipient) : undefined,
+            })),
+          });
+        } else if (campaign.type === 'list') {
+          await sendList(campaign.instance, number, {
+            title: personalize(payload.title, recipient),
+            description: personalize(payload.description, recipient),
+            footerText: personalize(payload.footerText, recipient),
+            buttonText: personalize(payload.buttonText, recipient),
+            sections: (payload.sections || []).map((section) => ({
+              title: personalize(section.title, recipient),
+              rows: (section.rows || []).map((row) => ({
+                rowId: personalize(row.rowId, recipient),
+                title: personalize(row.title, recipient),
+                description: personalize(row.description, recipient),
+              })),
+            })),
+          });
+        } else throw new Error('Unsupported campaign type.');
+        result = { index, phone: number, ok: true };
+      } catch (error) {
+        result = { index, phone: number, ok: false, message: error?.message || 'Send failed.' };
+      }
+    }
+    results.push(result);
+    const sent = results.filter((item) => item.ok).length;
+    await updateCampaign(id, { sent, failed: results.length - sent, results });
+    if (index < campaign.recipients.length - 1) await sleep(campaign.delayMs);
+  }
+
+  const sent = results.filter((item) => item.ok).length;
+  await updateCampaign(id, {
+    status: 'completed',
+    sent,
+    failed: results.length - sent,
+    results,
+    completedAt: new Date().toISOString(),
+  });
+}
+
+async function drain() {
+  if (running) return;
+  running = true;
+  try {
+    while (queue.length) {
+      const id = queue.shift();
+      try { await processCampaign(id); } catch (error) {
+        await updateCampaign(id, { status: 'failed', error: error?.message || 'Campaign worker failed.' });
+      }
+    }
+  } finally { running = false; }
+}
