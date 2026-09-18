@@ -54,6 +54,7 @@ export const campaignJobsApi = {
   pause: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/pause`, { method: 'POST' }),
   resume: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/resume`, { method: 'POST' }),
   cancel: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+  retryFailed: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/retry-failed`, { method: 'POST' }),
   create: (name: string, type: CampaignJob['type'], instance: string, recipients: CampaignRecipient[], payload: Record<string, unknown>, delayMs = 1500) =>
     request<CampaignJob>('/campaign-jobs', { method: 'POST', body: JSON.stringify({ name, type, instance, recipients, payload, delayMs }) }),
 };
