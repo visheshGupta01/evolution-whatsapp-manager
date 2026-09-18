@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { FileText, Send, Smartphone, Zap, BarChart3 } from 'lucide-react';
+import { FileText, Send, Smartphone, Zap, BarChart3, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAppStore } from '../../stores/app-store';
 
@@ -8,6 +8,7 @@ const items = [
   { to: '/send', label: 'Send Message', icon: Send },
   { to: '/templates', label: 'Templates', icon: FileText },
   { to: '/campaigns', label: 'Campaigns', icon: BarChart3 },
+  { to: '/audiences', label: 'Audiences', icon: Users },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
