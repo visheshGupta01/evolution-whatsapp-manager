@@ -11,6 +11,8 @@ const labels: Record<CampaignJob['type'], string> = {
   media: 'Media',
   buttons: 'Buttons',
   list: 'List',
+  'media-buttons': 'Media + Buttons',
+  'media-list': 'Media + List',
 };
 
 function exportResults(campaign: CampaignJob) {
