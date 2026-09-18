@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { config } from '../config.js';
-import { connectInstance, createInstance, deleteInstance, listInstances, logoutInstance, restartInstance } from '../services/evolution.service.js';
+import { connectInstance, createInstance, deleteInstance, listInstances, logoutInstance, restartInstance, setWebhook } from '../services/evolution.service.js';
 
 export const sessionsRouter = Router();
 const instance = (req) => String(req.params.instance || '').trim();
@@ -26,6 +26,10 @@ sessionsRouter.post('/', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+sessionsRouter.post('/:instance/webhook', async (req, res, next) => {
+  try { res.json(await setWebhook(instance(req), String(req.body?.url || config.evolutionWebhookUrl || '').trim())); } catch (error) { next(error); }
 });
 
 sessionsRouter.get('/:instance/connect', async (req, res, next) => {
