@@ -53,8 +53,13 @@ async function processCampaign(id) {
         const payload = campaign.payload || {};
         if (campaign.type === 'text') {
           await sendText(campaign.instance, number, personalize(payload.text, recipient), { delayMs: 0 });
-        } else if (campaign.type === 'media' || campaign.type === 'media-text') {
+        } else if (['media', 'media-text', 'media-buttons', 'media-list'].includes(campaign.type)) {
           await sendMedia(campaign.instance, number, payload.media, { caption: personalize(payload.caption || '', recipient), delayMs: 0 });
+          if (campaign.type === 'media-buttons') {
+            await sendButtons(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footer: personalize(payload.footer, recipient), buttons: (payload.buttons || []).map((button) => ({ ...button, id: personalize(button.id, recipient), displayText: personalize(button.displayText, recipient) })) });
+          } else if (campaign.type === 'media-list') {
+            await sendList(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footerText: personalize(payload.footerText, recipient), buttonText: personalize(payload.buttonText, recipient), sections: (payload.sections || []).map((section) => ({ title: personalize(section.title, recipient), rows: (section.rows || []).map((row) => ({ rowId: personalize(row.rowId, recipient), title: personalize(row.title, recipient), description: personalize(row.description, recipient) })) })) });
+          }
         } else if (campaign.type === 'buttons') {
           await sendButtons(campaign.instance, number, {
             title: personalize(payload.title, recipient),
