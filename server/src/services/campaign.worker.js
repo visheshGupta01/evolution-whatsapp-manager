@@ -81,6 +81,7 @@ async function processCampaign(id) {
               phoneNumber: button.phoneNumber ? personalize(button.phoneNumber, recipient) : undefined,
             })),
           });
+          await track(response, 'buttons');
         } else if (campaign.type === 'list') {
           const response = await sendList(campaign.instance, number, {
             title: personalize(payload.title, recipient),
@@ -96,7 +97,6 @@ async function processCampaign(id) {
               })),
             })),
           });
-          await track(response, 'buttons');
           await track(response, 'list');
         } else throw new Error('Unsupported campaign type.');
         result = { index, phone: number, ok: true };
