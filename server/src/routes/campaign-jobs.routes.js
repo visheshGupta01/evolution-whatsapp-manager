@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createCampaign, getCampaign, listCampaigns } from '../services/campaign.store.js';
-import { enqueueCampaign, getQueueSize } from '../services/campaign.worker.js';
+import { cancelCampaign, enqueueCampaign, getQueueSize, pauseCampaign, resumeCampaign } from '../services/campaign.worker.js';
 
 export const campaignJobsRouter = Router();
 
@@ -45,6 +45,41 @@ campaignJobsRouter.get('/:id', async (req, res, next) => {
     return res.json(campaign);
   } catch (error) { next(error); }
 });
+
+campaignJobsRouter.post('/:id/pause', async (req, res, next) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ ok: false, message: 'Campaign not found.' });
+    if (!['queued', 'running'].includes(campaign.status)) return res.status(409).json({ ok: false, message: 'Campaign cannot be paused in its current state.' });
+    pauseCampaign(campaign.id);
+    return res.json(await updateCampaignStatus(campaign.id, 'paused'));
+  } catch (error) { next(error); }
+});
+
+campaignJobsRouter.post('/:id/resume', async (req, res, next) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ ok: false, message: 'Campaign not found.' });
+    if (campaign.status !== 'paused') return res.status(409).json({ ok: false, message: 'Only paused campaigns can be resumed.' });
+    resumeCampaign(campaign.id);
+    return res.json(await updateCampaignStatus(campaign.id, 'queued'));
+  } catch (error) { next(error); }
+});
+
+campaignJobsRouter.post('/:id/cancel', async (req, res, next) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ ok: false, message: 'Campaign not found.' });
+    if (!['queued', 'running', 'paused'].includes(campaign.status)) return res.status(409).json({ ok: false, message: 'Campaign cannot be cancelled in its current state.' });
+    cancelCampaign(campaign.id);
+    return res.json(await updateCampaignStatus(campaign.id, 'cancelled'));
+  } catch (error) { next(error); }
+});
+
+async function updateCampaignStatus(id, status) {
+  const { updateCampaign } = await import('../services/campaign.store.js');
+  return updateCampaign(id, { status });
+}
 
 campaignJobsRouter.post('/', async (req, res, next) => {
   try {
