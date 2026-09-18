@@ -12,7 +12,7 @@ export type CampaignJobStatus = 'queued' | 'running' | 'paused' | 'cancelled' | 
 export type CampaignJob = CampaignResult & {
   id: string;
   name: string;
-  type: 'text' | 'media' | 'media-text' | 'buttons' | 'list';
+  type: 'text' | 'media' | 'media-text' | 'buttons' | 'list' | 'media-buttons' | 'media-list';
   instance: string;
   status: CampaignJobStatus;
   delayMs: number;
