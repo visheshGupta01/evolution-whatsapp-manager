@@ -59,6 +59,22 @@ export const campaignJobsApi = {
     request<CampaignJob>('/campaign-jobs', { method: 'POST', body: JSON.stringify({ name, type, instance, recipients, payload, delayMs }) }),
 };
 
+export type MessageTemplate = {
+  id: string; name: string; type: 'text' | 'media-text' | 'buttons' | 'list' | 'media-buttons' | 'media-list';
+  createdAt: string; updatedAt: string; text?: string; title?: string; description?: string; footer?: string;
+  buttonText?: string; buttons?: CampaignButton[]; sections?: CampaignList['sections']; media?: CampaignMedia;
+};
+export const templatesApi = {
+  list: () => request<MessageTemplate[]>('/templates'),
+  create: (template: Omit<MessageTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const { name, type, ...data } = template; return request<MessageTemplate>('/templates', { method: 'POST', body: JSON.stringify({ name, type, data }) });
+  },
+  update: (id: string, template: Omit<MessageTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const { name, type, ...data } = template; return request<MessageTemplate>(`/templates/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ name, type, data }) });
+  },
+  remove: (id: string) => request<void>(`/templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
 export const campaignsApi = {
   sendText: (instance: string, text: string, recipients: CampaignRecipient[], delayMs = 1500) => request<CampaignResult>('/campaigns/text', { method: 'POST', body: JSON.stringify({ instance, text, recipients, delayMs }) }),
   sendMedia: (instance: string, media: CampaignMedia, caption: string, recipients: CampaignRecipient[], delayMs = 1500) => request<CampaignResult>('/campaigns/media', { method: 'POST', body: JSON.stringify({ instance, media, caption, recipients, delayMs }) }),
