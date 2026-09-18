@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import * as XLSX from '@keep-lts/xlsx';
-import { BarChart3, Clock3, FileText, Loader2, MessageSquare, RefreshCw, Send } from 'lucide-react';
+import { BarChart3, Clock3, Loader2, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { campaignJobsApi, type CampaignAnalytics, type CampaignJob } from '../lib/api';
 import '../styles/campaigns.css';
@@ -15,12 +14,6 @@ const labels: Record<CampaignJob['type'], string> = {
   'media-list': 'Media + List',
 };
 
-function exportResults(campaign: CampaignJob) {
-  const rows = (campaign.results || []).map((item) => ({ index: item.index + 1, phone: item.phone, status: item.ok ? 'Sent' : 'Failed', error: item.message || '' }));
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, sheet, 'Results');
-  XLSX.writeFile(book, `${campaign.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 60) || 'campaign'}-results.xlsx`);
-}
 
 function deliveryLabel(status?: string) { return ({ PENDING: 'Pending', SERVER_ACK: 'Server accepted', DELIVERY_ACK: 'Delivered', READ: 'Read', PLAYED: 'Played', ERROR: 'Error', DELETED: 'Deleted' } as Record<string,string>)[String(status || '').toUpperCase()] || status || 'Pending'; }
 function latestDelivery(result: CampaignJob['results'][number]) { return result.deliveryStatuses?.length ? result.deliveryStatuses[result.deliveryStatuses.length - 1].status : 'PENDING'; }
@@ -33,8 +26,6 @@ export function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [actionId, setActionId] = useState('');
-  const [selected, setSelected] = useState<CampaignJob | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -42,13 +33,6 @@ export function CampaignsPage() {
     try { setCampaigns(await campaignJobsApi.list(100)); }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Could not load campaigns.'); }
     finally { setLoading(false); setRefreshing(false); }
-  };
-
-  const action = async (id: string, operation: 'pause' | 'resume' | 'cancel' | 'retryFailed') => {
-    setActionId(id);
-    try { await campaignJobsApi[operation](id); await load(true); toast.success(operation === 'cancel' ? 'Campaign cancelled' : operation === 'pause' ? 'Campaign paused' : operation === 'resume' ? 'Campaign resumed' : 'Failed recipients queued for retry'); }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Campaign action failed.'); }
-    finally { setActionId(''); }
   };
 
   useEffect(() => {
