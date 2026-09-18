@@ -39,11 +39,10 @@ function TemplateIcon({ type }: { type: TemplateType }) {
 export function TemplatesPage() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const refresh = async () => { try { setTemplates(await templatesApi.list()); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not load templates.'); } finally { setLoading(false); } };
+  const refresh = async () => { try { setTemplates(await templatesApi.list()); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not load templates.'); } finally {} };
   useEffect(() => { void refresh(); }, []);
   const startCreate = () => {
     setEditing(null);
