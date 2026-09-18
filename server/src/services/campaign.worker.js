@@ -1,4 +1,4 @@
-import { getCampaign, listCampaigns, recordCampaignResult, updateCampaign } from './campaign.store.js';
+import { getCampaign, listCampaigns, recordCampaignMessage, recordCampaignResult, updateCampaign } from './campaign.store.js';
 import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
 
 const queue = [];
@@ -13,6 +13,7 @@ function personalize(template, recipient) {
   });
 }
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+function messageIdFrom(response) { return response?.key?.id || response?.data?.key?.id || response?.message?.key?.id || response?.data?.message?.key?.id; }
 
 export function enqueueCampaign(id) {
   if (!queue.includes(id)) queue.push(id);
@@ -46,22 +47,28 @@ async function processCampaign(id) {
     const recipient = campaign.recipients[index] || {};
     const number = normalizeNumber(recipient.phone || recipient.number);
     let result;
+    const sentMessageIds = [];
+    const track = async (response, messageType) => { const messageId = messageIdFrom(response); if (messageId) { sentMessageIds.push(messageId); await recordCampaignMessage(id, index, messageId, messageType, 'PENDING'); } };
     if (!number || number.length < 8 || number.length > 15) {
       result = { index, phone: recipient.phone || recipient.number || '', ok: false, message: 'Invalid phone number.' };
     } else {
       try {
         const payload = campaign.payload || {};
         if (campaign.type === 'text') {
-          await sendText(campaign.instance, number, personalize(payload.text, recipient), { delayMs: 0 });
+          const response = await sendText(campaign.instance, number, personalize(payload.text, recipient), { delayMs: 0 });
+          await track(response, 'text');
         } else if (['media', 'media-text', 'media-buttons', 'media-list'].includes(campaign.type)) {
-          await sendMedia(campaign.instance, number, payload.media, { caption: personalize(payload.caption || '', recipient), delayMs: 0 });
+          const response = await sendMedia(campaign.instance, number, payload.media, { caption: personalize(payload.caption || '', recipient), delayMs: 0 });
+          await track(response, 'media');
           if (campaign.type === 'media-buttons') {
-            await sendButtons(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footer: personalize(payload.footer, recipient), buttons: (payload.buttons || []).map((button) => ({ ...button, id: personalize(button.id, recipient), displayText: personalize(button.displayText, recipient) })) });
+            const response = await sendButtons(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footer: personalize(payload.footer, recipient), buttons: (payload.buttons || []).map((button) => ({ ...button, id: personalize(button.id, recipient), displayText: personalize(button.displayText, recipient) })) });
+            await track(response, 'buttons');
           } else if (campaign.type === 'media-list') {
-            await sendList(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footerText: personalize(payload.footerText, recipient), buttonText: personalize(payload.buttonText, recipient), sections: (payload.sections || []).map((section) => ({ title: personalize(section.title, recipient), rows: (section.rows || []).map((row) => ({ rowId: personalize(row.rowId, recipient), title: personalize(row.title, recipient), description: personalize(row.description, recipient) })) })) });
+            const response = await sendList(campaign.instance, number, { title: personalize(payload.title, recipient), description: personalize(payload.description, recipient), footerText: personalize(payload.footerText, recipient), buttonText: personalize(payload.buttonText, recipient), sections: (payload.sections || []).map((section) => ({ title: personalize(section.title, recipient), rows: (section.rows || []).map((row) => ({ rowId: personalize(row.rowId, recipient), title: personalize(row.title, recipient), description: personalize(row.description, recipient) })) })) });
+            await track(response, 'list');
           }
         } else if (campaign.type === 'buttons') {
-          await sendButtons(campaign.instance, number, {
+          const response = await sendButtons(campaign.instance, number, {
             title: personalize(payload.title, recipient),
             description: personalize(payload.description, recipient),
             footer: personalize(payload.footer, recipient),
@@ -75,7 +82,7 @@ async function processCampaign(id) {
             })),
           });
         } else if (campaign.type === 'list') {
-          await sendList(campaign.instance, number, {
+          const response = await sendList(campaign.instance, number, {
             title: personalize(payload.title, recipient),
             description: personalize(payload.description, recipient),
             footerText: personalize(payload.footerText, recipient),
@@ -89,6 +96,8 @@ async function processCampaign(id) {
               })),
             })),
           });
+          await track(response, 'buttons');
+          await track(response, 'list');
         } else throw new Error('Unsupported campaign type.');
         result = { index, phone: number, ok: true };
       } catch (error) {
