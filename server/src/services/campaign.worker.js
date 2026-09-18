@@ -1,4 +1,4 @@
-import { getCampaign, updateCampaign } from './campaign.store.js';
+import { getCampaign, listCampaigns, updateCampaign } from './campaign.store.js';
 import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
 
 const queue = [];
@@ -101,4 +101,12 @@ async function drain() {
       }
     }
   } finally { running = false; }
+}
+
+export async function recoverCampaigns() {
+  const campaigns = await listCampaigns({ limit: 200 });
+  for (const campaign of campaigns) {
+    if (campaign.status === 'running') await updateCampaign(campaign.id, { status: 'queued', startedAt: null });
+    if (campaign.status === 'queued' || campaign.status === 'running') enqueueCampaign(campaign.id);
+  }
 }
