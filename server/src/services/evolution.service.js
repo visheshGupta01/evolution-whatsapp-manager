@@ -127,7 +127,12 @@ export async function setWebhook(instance, url = config.evolutionWebhookUrl) {
   return data;
 }
 
-export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
+export async function connectInstance(instance) {
+  if (config.evolutionWebhookUrl) {
+    try { await setWebhook(instance); } catch (error) { console.warn('[webhook] could not configure instance webhook:', error.message); }
+  }
+  return (await request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` })).data;
+}
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
 
 function cleanNumber(value) {
