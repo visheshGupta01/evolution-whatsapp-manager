@@ -21,6 +21,7 @@ export function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionId, setActionId] = useState('');
+  const [selected, setSelected] = useState<CampaignJob | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -30,9 +31,9 @@ export function CampaignsPage() {
     finally { setLoading(false); setRefreshing(false); }
   };
 
-  const action = async (id: string, operation: 'pause' | 'resume' | 'cancel') => {
+  const action = async (id: string, operation: 'pause' | 'resume' | 'cancel' | 'retryFailed') => {
     setActionId(id);
-    try { await campaignJobsApi[operation](id); await load(true); toast.success(operation === 'cancel' ? 'Campaign cancelled' : operation === 'pause' ? 'Campaign paused' : 'Campaign resumed'); }
+    try { await campaignJobsApi[operation](id); await load(true); toast.success(operation === 'cancel' ? 'Campaign cancelled' : operation === 'pause' ? 'Campaign paused' : operation === 'resume' ? 'Campaign resumed' : 'Failed recipients queued for retry'); }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Campaign action failed.'); }
     finally { setActionId(''); }
   };
