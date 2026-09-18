@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as XLSX from '@keep-lts/xlsx';
 import { Clock3, FileText, Loader2, MessageSquare, RefreshCw, Send, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { campaignJobsApi, type CampaignJob } from '../lib/api';
@@ -11,6 +12,13 @@ const labels: Record<CampaignJob['type'], string> = {
   buttons: 'Buttons',
   list: 'List',
 };
+
+function exportResults(campaign: CampaignJob) {
+  const rows = (campaign.results || []).map((item) => ({ index: item.index + 1, phone: item.phone, status: item.ok ? 'Sent' : 'Failed', error: item.message || '' }));
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, sheet, 'Results');
+  XLSX.writeFile(book, `${campaign.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 60) || 'campaign'}-results.xlsx`);
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
