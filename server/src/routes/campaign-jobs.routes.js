@@ -12,7 +12,7 @@ const MAX_LIST_ROWS = 10;
 
 function validateCampaign(body) {
   const type = String(body?.type || '').trim();
-  if (!['text', 'media', 'media-text', 'buttons', 'list'].includes(type)) throw Object.assign(new Error('Unsupported campaign type.'), { status: 400 });
+  if (!['text', 'media', 'media-text', 'buttons', 'list', 'media-buttons', 'media-list'].includes(type)) throw Object.assign(new Error('Unsupported campaign type.'), { status: 400 });
   const instance = String(body?.instance || '').trim();
   if (!instance) throw Object.assign(new Error('Instance is required.'), { status: 400 });
   const recipients = Array.isArray(body?.recipients) ? body.recipients : [];
@@ -21,10 +21,10 @@ function validateCampaign(body) {
   const delayMs = Math.max(MIN_DELAY_MS, Math.min(Number.isFinite(Number(body?.delayMs)) ? Number(body.delayMs) : 1500, MAX_DELAY_MS));
   const payload = body?.payload && typeof body.payload === 'object' ? body.payload : {};
   if (type === 'text' && !String(payload.text || '').trim()) throw Object.assign(new Error('Message text is required.'), { status: 400 });
-  if ((type === 'media' || type === 'media-text') && !payload.media?.base64) throw Object.assign(new Error('Media is required.'), { status: 400 });
-  if (type === 'media-text' && !String(payload.caption || '').trim()) throw Object.assign(new Error('Caption is required.'), { status: 400 });
-  if (type === 'buttons' && (!String(payload.title || '').trim() || !Array.isArray(payload.buttons) || !payload.buttons.length || payload.buttons.length > MAX_BUTTONS)) throw Object.assign(new Error('Button campaign requires a title and 1–3 buttons.'), { status: 400 });
-  if (type === 'list') {
+  if (['media', 'media-text', 'media-buttons', 'media-list'].includes(type) && !payload.media?.base64) throw Object.assign(new Error('Media is required.'), { status: 400 });
+  if (['media-text', 'media-buttons', 'media-list'].includes(type) && !String(payload.caption || '').trim()) throw Object.assign(new Error('Caption is required.'), { status: 400 });
+  if (['buttons', 'media-buttons'].includes(type) && (!String(payload.title || '').trim() || !Array.isArray(payload.buttons) || !payload.buttons.length || payload.buttons.length > MAX_BUTTONS)) throw Object.assign(new Error('Button campaign requires a title and 1–3 buttons.'), { status: 400 });
+  if (['list', 'media-list'].includes(type)) {
     const sections = Array.isArray(payload.sections) ? payload.sections : [];
     const rows = sections.reduce((n, s) => n + (Array.isArray(s.rows) ? s.rows.length : 0), 0);
     if (!String(payload.title || '').trim() || !String(payload.buttonText || '').trim() || !sections.length || rows < 1 || rows > MAX_LIST_ROWS) throw Object.assign(new Error('List campaign requires a title, menu button and 1–10 rows.'), { status: 400 });
