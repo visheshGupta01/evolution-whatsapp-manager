@@ -56,6 +56,18 @@ export async function initDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS templates_updated_at_idx ON templates(updated_at DESC);
+    CREATE TABLE IF NOT EXISTS audiences (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS audience_recipients (
+      audience_id TEXT NOT NULL REFERENCES audiences(id) ON DELETE CASCADE,
+      recipient_index INTEGER NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
+      recipient JSONB NOT NULL DEFAULT '{}'::jsonb,
+      PRIMARY KEY (audience_id, recipient_index)
+    );
+    CREATE INDEX IF NOT EXISTS audience_recipients_phone_idx ON audience_recipients(audience_id, phone);
   `);
   await migrateLegacyCampaigns();
 }
