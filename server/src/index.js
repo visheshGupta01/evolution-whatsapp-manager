@@ -9,8 +9,10 @@ import { sessionsRouter } from './routes/sessions.routes.js';
 import { campaignsRouter } from './routes/campaigns.routes.js';
 import { campaignJobsRouter } from './routes/campaign-jobs.routes.js';
 import { recoverCampaigns } from './services/campaign.worker.js';
+import { initDatabase, closeDatabase } from './services/db.js';
 
 assertConfiguration();
+await initDatabase();
 const app = express();
 registerMiddleware(app);
 
@@ -41,6 +43,6 @@ server.listen(config.port, () => {
   console.log(`[server] Evolution API: ${config.evolutionUrl || '(not configured)'}`);
   console.log(`[server] API key: ${config.evolutionKey ? 'configured' : 'MISSING'}`);
 });
-const shutdown = (signal) => { console.log(`[server] ${signal} received, shutting down`); server.close(() => process.exit(0)); };
+const shutdown = (signal) => { console.log(`[server] ${signal} received, shutting down`); server.close(async () => { await closeDatabase(); process.exit(0); }); };
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
