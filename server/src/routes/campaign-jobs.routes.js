@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCampaign, getCampaign, listCampaigns } from '../services/campaign.store.js';
+import { createCampaign, getCampaign, listCampaigns, updateCampaign } from '../services/campaign.store.js';
 import { cancelCampaign, enqueueCampaign, getQueueSize, pauseCampaign, resumeCampaign } from '../services/campaign.worker.js';
 
 export const campaignJobsRouter = Router();
@@ -37,6 +37,26 @@ campaignJobsRouter.get('/', async (req, res, next) => {
 });
 
 campaignJobsRouter.get('/queue/status', (_req, res) => res.json({ queueSize: getQueueSize() }));
+
+campaignJobsRouter.post('/:id/retry-failed', async (req, res, next) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ ok: false, message: 'Campaign not found.' });
+    const failed = (campaign.results || []).filter((item) => !item.ok);
+    if (!failed.length) return res.status(409).json({ ok: false, message: 'There are no failed recipients to retry.' });
+    const recipients = failed.map((item) => campaign.recipients[item.index]).filter(Boolean);
+    const retry = await createCampaign({
+      name: `${campaign.name} · Retry failed`,
+      type: campaign.type,
+      instance: campaign.instance,
+      recipients,
+      delayMs: campaign.delayMs,
+      payload: campaign.payload,
+    });
+    enqueueCampaign(retry.id);
+    return res.status(202).json(retry);
+  } catch (error) { next(error); }
+});
 
 campaignJobsRouter.get('/:id', async (req, res, next) => {
   try {
