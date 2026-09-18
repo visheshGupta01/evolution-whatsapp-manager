@@ -14,12 +14,18 @@ async function attachData(campaign) {
   if (!campaign) return null;
   const [recipients, results] = await Promise.all([
     pool.query('SELECT recipient_index, recipient FROM campaign_recipients WHERE campaign_id=$1 ORDER BY recipient_index', [campaign.id]),
-    pool.query('SELECT recipient_index AS index, phone, ok, message, timestamp FROM campaign_results WHERE campaign_id=$1 ORDER BY recipient_index', [campaign.id]),
+    pool.query('SELECT r.recipient_index AS index, r.phone, r.ok, r.message, r.timestamp,
+      COALESCE(m.statuses, '[]'::jsonb) AS delivery_statuses
+      FROM campaign_results r LEFT JOIN (
+        SELECT campaign_id, recipient_index, jsonb_agg(jsonb_build_object('messageId',message_id,'type',message_type,'status',status,'updatedAt',status_updated_at) ORDER BY status_updated_at) AS statuses
+        FROM campaign_messages GROUP BY campaign_id, recipient_index
+      ) m ON m.campaign_id=r.campaign_id AND m.recipient_index=r.recipient_index
+      WHERE r.campaign_id=$1 ORDER BY r.recipient_index', [campaign.id]),
   ]);
   return {
     ...campaign,
     recipients: recipients.rows.map((row) => row.recipient || {}),
-    results: results.rows.map((row) => ({ index: row.index, phone: row.phone, ok: row.ok, message: row.message || undefined, timestamp: iso(row.timestamp) })),
+    results: results.rows.map((row) => ({ index: row.index, phone: row.phone, ok: row.ok, message: row.message || undefined, timestamp: iso(row.timestamp), deliveryStatuses: row.delivery_statuses || [] })),
   };
 }
 export async function listCampaigns({ limit = 50 } = {}) {
@@ -68,6 +74,21 @@ export async function updateCampaign(id, patch) {
     [id,next.name,next.type,next.instance,next.status,next.delayMs,JSON.stringify(next.payload),next.total,next.sent,next.failed,next.updatedAt,next.startedAt,next.completedAt,next.error || null]
   );
   return next;
+}
+export async function recordCampaignMessage(id, recipientIndex, messageId, messageType, status = 'PENDING') {
+  if (!messageId) return;
+  await pool.query(
+    `INSERT INTO campaign_messages(campaign_id,recipient_index,message_id,message_type,status,status_updated_at)
+     VALUES($1,$2,$3,$4,$5,NOW()) ON CONFLICT(campaign_id,message_id) DO NOTHING`,
+    [id, recipientIndex, messageId, messageType, status]
+  );
+}
+export async function updateCampaignMessageStatus(messageId, status) {
+  const { rows } = await pool.query(
+    `UPDATE campaign_messages SET status=$2,status_updated_at=NOW() WHERE message_id=$1 RETURNING campaign_id,recipient_index,message_id,message_type,status,status_updated_at`,
+    [messageId, status]
+  );
+  return rows[0] || null;
 }
 export async function recordCampaignResult(id, result, counts) {
   const timestamp = result.timestamp || new Date().toISOString();
