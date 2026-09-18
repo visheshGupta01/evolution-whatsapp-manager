@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { FileText, Send, Smartphone, Zap } from 'lucide-react';
+import { FileText, Send, Smartphone, Zap, BarChart3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAppStore } from '../../stores/app-store';
 
@@ -7,6 +7,7 @@ const items = [
   { to: '/sessions', label: 'Sessions', icon: Smartphone },
   { to: '/send', label: 'Send Message', icon: Send },
   { to: '/templates', label: 'Templates', icon: FileText },
+  { to: '/campaigns', label: 'Campaigns', icon: BarChart3 },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
