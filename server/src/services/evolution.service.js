@@ -106,6 +106,24 @@ export async function createInstance(instanceName) {
   return { instanceName, tokenKnown: true, ...data };
 }
 
+export async function setWebhook(instance, url = config.evolutionWebhookUrl) {
+  if (!url) throw new EvolutionError('EVOLUTION_WEBHOOK_URL is not configured.', 400);
+  const { data } = await request({
+    method: 'POST',
+    url: `/webhook/set/${encodeURIComponent(instance)}`,
+    data: {
+      webhook: {
+        enabled: true,
+        url,
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: ['MESSAGES_UPDATE', 'SEND_MESSAGE'],
+      },
+    },
+  });
+  return data;
+}
+
 export const connectInstance = (instance) => request({ method: 'GET', url: `/instance/connect/${encodeURIComponent(instance)}` }).then((r) => r.data);
 export const restartInstance = (instance) => request({ method: 'PUT', url: `/instance/restart/${encodeURIComponent(instance)}` }).then((r) => r.data);
 
