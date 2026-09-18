@@ -39,7 +39,7 @@ export async function enforceCampaignSafety({ instance, recipients, delayMs }) {
     `SELECT
        COALESCE(SUM(
          CASE
-           WHEN status IN ('queued','running','paused') THEN total
+           WHEN status IN ('queued','running','paused') THEN GREATEST(total - sent - failed, 0)
            ELSE sent + failed
          END
        ), 0)::int AS reserved
