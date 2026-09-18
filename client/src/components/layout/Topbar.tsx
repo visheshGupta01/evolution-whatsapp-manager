@@ -6,6 +6,8 @@ const titles: Record<string, string> = {
   '/sessions': 'Sessions',
   '/send': 'Send Message',
   '/templates': 'Templates',
+  '/campaigns': 'Campaigns',
+  '/templates': 'Templates',
 };
 
 export function Topbar({ onRefresh, onAdd }: { onRefresh: () => void; onAdd: () => void }) {
