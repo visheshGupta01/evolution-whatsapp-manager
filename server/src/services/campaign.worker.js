@@ -1,5 +1,6 @@
 import { getCampaign, listCampaigns, recordCampaignMessage, recordCampaignResult, updateCampaign } from './campaign.store.js';
 import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
+import { shouldAutoPause } from './campaign.safety.js';
 
 const queue = [];
 const controls = new Map();
@@ -107,6 +108,14 @@ async function processCampaign(id) {
     results = [...results, { ...result, timestamp: new Date().toISOString() }];
     const sent = results.filter((item) => item.ok).length;
     await recordCampaignResult(id, results[results.length - 1], { sent, failed: results.length - sent });
+    if (shouldAutoPause(results)) {
+      await updateCampaign(id, {
+        status: 'paused',
+        error: 'Campaign paused automatically because the failure rate exceeded the safety threshold.',
+      });
+      controls.delete(id);
+      return;
+    }
     if (index < campaign.recipients.length - 1) await sleep(campaign.delayMs);
   }
 
