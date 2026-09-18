@@ -197,15 +197,39 @@ campaignJobsRouter.post('/', async (req, res, next) => {
         FROM campaigns c
         LEFT JOIN LATERAL (
           SELECT
-            COUNT(*)::int AS message_count,
-            COUNT(*) FILTER (WHERE status IN ('DELIVERY_ACK','READ','PLAYED'))::int AS delivered,
-            COUNT(*) FILTER (WHERE status IN ('READ','PLAYED'))::int AS read
-          FROM (
-            SELECT DISTINCT ON (message_id) message_id, status
-            FROM campaign_messages
-            WHERE campaign_id = c.id
-            ORDER BY message_id, status_updated_at DESC
-          ) latest
+            (SELECT COUNT(*) FROM campaign_messages WHERE campaign_id = c.id)::int AS message_count,
+            (SELECT COUNT(*) FROM (
+              SELECT recipient_index, MAX(
+                CASE status
+                  WHEN 'PLAYED' THEN 6
+                  WHEN 'READ' THEN 5
+                  WHEN 'DELIVERY_ACK' THEN 4
+                  WHEN 'SERVER_ACK' THEN 3
+                  WHEN 'PENDING' THEN 2
+                  WHEN 'ERROR' THEN 1
+                  ELSE 0
+                END
+              ) AS rank
+              FROM campaign_messages
+              WHERE campaign_id = c.id
+              GROUP BY recipient_index
+            ) latest_recipient WHERE rank >= 4)::int AS delivered,
+            (SELECT COUNT(*) FROM (
+              SELECT recipient_index, MAX(
+                CASE status
+                  WHEN 'PLAYED' THEN 6
+                  WHEN 'READ' THEN 5
+                  WHEN 'DELIVERY_ACK' THEN 4
+                  WHEN 'SERVER_ACK' THEN 3
+                  WHEN 'PENDING' THEN 2
+                  WHEN 'ERROR' THEN 1
+                  ELSE 0
+                END
+              ) AS rank
+              FROM campaign_messages
+              WHERE campaign_id = c.id
+              GROUP BY recipient_index
+            ) latest_recipient WHERE rank >= 5)::int AS read
         ) cm ON true
         WHERE c.created_at >= CURRENT_DATE - ($1::int - 1)
         ORDER BY c.created_at DESC
