@@ -8,7 +8,7 @@ export type CampaignButtons = { title: string; description?: string; footer?: st
 export type CampaignListRow = { title: string; description?: string; rowId: string };
 export type CampaignListSection = { title: string; rows: CampaignListRow[] };
 export type CampaignList = { title: string; description?: string; footerText?: string; buttonText: string; sections: CampaignListSection[] };
-export type CampaignJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type CampaignJobStatus = 'queued' | 'running' | 'paused' | 'cancelled' | 'completed' | 'failed';
 export type CampaignJob = CampaignResult & {
   id: string;
   name: string;
@@ -51,6 +51,9 @@ export const sessionsApi = {
 export const campaignJobsApi = {
   list: (limit = 50) => request<CampaignJob[]>(`/campaign-jobs?limit=${limit}`),
   get: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}`),
+  pause: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/pause`, { method: 'POST' }),
+  resume: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/resume`, { method: 'POST' }),
+  cancel: (id: string) => request<CampaignJob>(`/campaign-jobs/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   create: (name: string, type: CampaignJob['type'], instance: string, recipients: CampaignRecipient[], payload: Record<string, unknown>, delayMs = 1500) =>
     request<CampaignJob>('/campaign-jobs', { method: 'POST', body: JSON.stringify({ name, type, instance, recipients, payload, delayMs }) }),
 };
