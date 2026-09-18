@@ -22,6 +22,9 @@ function exportResults(campaign: CampaignJob) {
   XLSX.writeFile(book, `${campaign.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 60) || 'campaign'}-results.xlsx`);
 }
 
+function deliveryLabel(status?: string) { return ({ PENDING: 'Pending', SERVER_ACK: 'Server accepted', DELIVERY_ACK: 'Delivered', READ: 'Read', PLAYED: 'Played', ERROR: 'Error', DELETED: 'Deleted' } as Record<string,string>)[String(status || '').toUpperCase()] || status || 'Pending'; }
+function latestDelivery(result: CampaignJob['results'][number]) { return result.deliveryStatuses?.length ? result.deliveryStatuses[result.deliveryStatuses.length - 1].status : 'PENDING'; }
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
