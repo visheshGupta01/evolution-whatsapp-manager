@@ -1,4 +1,4 @@
-import { getCampaign, listCampaigns, updateCampaign } from './campaign.store.js';
+import { getCampaign, listCampaigns, recordCampaignResult, updateCampaign } from './campaign.store.js';
 import { sendButtons, sendList, sendMedia, sendText } from './evolution.service.js';
 
 const queue = [];
@@ -30,7 +30,7 @@ async function processCampaign(id) {
   if (campaign.status === 'paused' && controls.get(id) !== 'resumed') return;
   controls.delete(id);
   campaign = await updateCampaign(id, { status: 'running', startedAt: new Date().toISOString() });
-  const results = [];
+  let results = campaign.results || [];
 
   for (let index = campaign.results?.length || 0; index < campaign.recipients.length; index += 1) {
     const control = controls.get(id);
@@ -95,9 +95,9 @@ async function processCampaign(id) {
         result = { index, phone: number, ok: false, message: error?.message || 'Send failed.' };
       }
     }
-    results.push(result);
+    results = [...results, { ...result, timestamp: new Date().toISOString() }];
     const sent = results.filter((item) => item.ok).length;
-    await updateCampaign(id, { sent, failed: results.length - sent, results });
+    await recordCampaignResult(id, results[results.length - 1], { sent, failed: results.length - sent });
     if (index < campaign.recipients.length - 1) await sleep(campaign.delayMs);
   }
 
@@ -106,7 +106,6 @@ async function processCampaign(id) {
     status: 'completed',
     sent,
     failed: results.length - sent,
-    results,
     completedAt: new Date().toISOString(),
   });
 }
