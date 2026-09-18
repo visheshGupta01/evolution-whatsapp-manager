@@ -103,6 +103,9 @@ export async function createInstance(instanceName) {
     data: { instanceName, integration: 'WHATSAPP-BAILEYS', token, qrcode: true },
   });
   tokens.set(instanceName, token);
+  if (config.evolutionWebhookUrl) {
+    try { await setWebhook(instanceName); } catch (error) { console.warn('[webhook] could not configure instance webhook:', error.message); }
+  }
   return { instanceName, tokenKnown: true, ...data };
 }
 
