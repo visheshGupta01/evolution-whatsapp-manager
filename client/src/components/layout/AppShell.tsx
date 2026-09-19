@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useAppStore } from '../../stores/app-store';
 
 const items = [
+  { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   { to: '/sessions', label: 'Sessions', icon: Smartphone },
   { to: '/send', label: 'Send Message', icon: Send },
   { to: '/templates', label: 'Templates', icon: FileText },
