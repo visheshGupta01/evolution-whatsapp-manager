@@ -15,6 +15,7 @@ import { webhooksRouter } from './routes/webhooks.routes.js';
 import { audiencesRouter } from './routes/audiences.routes.js';
 import { crmRouter } from './routes/crm.routes.js';
 import { inboxRouter } from './routes/inbox.routes.js';
+import { automationRouter } from './routes/automation.routes.js';
 
 assertConfiguration();
 await initDatabase();
@@ -36,6 +37,7 @@ app.use('/api/webhooks', webhooksRouter);
 app.use('/api/audiences', audiencesRouter);
 app.use('/api/crm', crmRouter);
 app.use('/api/inbox', inboxRouter);
+app.use('/api/automations', automationRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, '../../client/dist');
