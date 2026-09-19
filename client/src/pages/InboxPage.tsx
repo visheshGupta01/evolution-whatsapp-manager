@@ -1,0 +1,26 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, MessageCircle, MoreHorizontal, Search, Send, Archive, Smile, Paperclip } from 'lucide-react';
+import { toast } from 'sonner';
+import { inboxApi, type InboxChat, type InboxMessage } from '../lib/api';
+import { useSessions } from '../hooks/use-sessions';
+import '../styles/inbox.css';
+
+function textOf(m: InboxMessage) {
+  const x=m?.message||{};
+  return x.conversation||x.extendedTextMessage?.text||x.imageMessage?.caption||x.videoMessage?.caption||x.documentMessage?.caption||x.buttonsResponseMessage?.selectedDisplayText||x.listResponseMessage?.title||'';
+}
+function messageTime(m:InboxMessage){const v=Number(m?.messageTimestamp||0);return v?new Date(v*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';}
+export function InboxPage(){
+ const {data:sessions=[]}=useSessions();
+ const connected=useMemo(()=>sessions.filter(s=>['open','connected','online'].includes(String(s.state||s.status||'').toLowerCase())),[sessions]);
+ const [instance,setInstance]=useState(''),[chats,setChats]=useState<InboxChat[]>([]),[selected,setSelected]=useState<InboxChat|null>(null),[messages,setMessages]=useState<InboxMessage[]>([]),[query,setQuery]=useState(''),[draft,setDraft]=useState(''),[loading,setLoading]=useState(false),[threadLoading,setThreadLoading]=useState(false);
+ useEffect(()=>{if(!instance&&connected[0]?.instanceName)setInstance(connected[0].instanceName)},[connected,instance]);
+ const loadChats=async()=>{if(!instance)return;setLoading(true);try{setChats(await inboxApi.chats(instance))}catch(e){toast.error(e instanceof Error?e.message:'Could not load chats.')}finally{setLoading(false)}};
+ useEffect(()=>{void loadChats()},[instance]);
+ const openChat=async(chat:InboxChat)=>{setSelected(chat);setThreadLoading(true);try{setMessages(await inboxApi.messages(instance,chat.remoteJid));const first=await inboxApi.messages(instance,chat.remoteJid);if(Array.isArray(first)&&first.length){const keys=first.map(x=>x.key).filter(Boolean);await inboxApi.markRead(instance,keys)}}catch(e){toast.error(e instanceof Error?e.message:'Could not load messages.')}finally{setThreadLoading(false)}};
+ const send=async()=>{if(!selected||!draft.trim())return;try{await inboxApi.presence(instance,selected.remoteJid,'composing');await inboxApi.sendText(instance,selected.remoteJid,draft.trim());setDraft('');setTimeout(()=>void openChat(selected),400)}catch(e){toast.error(e instanceof Error?e.message:'Could not send message.')}};
+ const filtered=chats.filter(c=>(c.name||c.remoteJid||'').toLowerCase().includes(query.toLowerCase()));
+ return <div className="inboxPage"><section className="hero messagesHero"><div><p className="eyebrow">WHATSAPP</p><h1>Inbox</h1><p>Real chats and message history from Evolution API.</p></div><label className="instanceSelect">Instance<select value={instance} onChange={e=>setInstance(e.target.value)}>{connected.map(s=><option key={s.instanceName} value={s.instanceName}>{s.instanceName}</option>)}</select></label></section>
+ <section className={selected?'inbox threadOpen':'inbox'}><div className="chatList"><div className="chatListHead"><strong>Conversations</strong><button className="iconBtn small" onClick={()=>void loadChats()}><MoreHorizontal size={15}/></button></div><div className="searchBox chatSearch"><Search size={14}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search chats"/></div><div className="chatRows">{loading?<div className="chatState">Loading chats…</div>:filtered.map(c=><button className={`chatRow ${selected?.remoteJid===c.remoteJid?'selected':''}`} key={c.remoteJid} onClick={()=>void openChat(c)}><div className="chatAvatar"><MessageCircle size={15}/></div><div className="chatRowBody"><div><strong>{c.name||c.remoteJid}</strong><time>{c.lastMessageTimestamp?new Date(Number(c.lastMessageTimestamp)*1000).toLocaleDateString():''}</time></div><p>{c.lastText||'No message preview'}</p></div>{Number(c.unreadCount)>0&&<span className="unread">{c.unreadCount}</span>}</button>)}</div></div>
+ <div className="thread">{selected&&<><header className="threadHead"><button className="iconBtn small backBtn" onClick={()=>setSelected(null)}><ArrowLeft size={15}/></button><div className="chatAvatar"><MessageCircle size={15}/></div><div><strong>{selected.name||selected.remoteJid}</strong><span className="threadLive"><i/> {selected.remoteJid}</span></div><button className="iconBtn small" onClick={()=>void inboxApi.archive(instance,selected.remoteJid,true)}><Archive size={14}/></button></header><div className="messageList">{threadLoading?<div className="threadEmpty">Loading messages…</div>:messages.length?messages.map((m,i)=><div key={m.key?.id||i} className={`bubbleRow ${m.key?.fromMe?'mine':''}`}><div className="bubble"><p>{textOf(m)||'[media / interactive message]'}</p><span>{messageTime(m)}</span></div></div>):<div className="threadEmpty"><strong>No messages</strong><span>Send the first message from this thread.</span></div>}</div><div className="composer"><button className="iconBtn small" title="Attachment"><Paperclip size={14}/></button><textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type a message…"/><button className="primary" onClick={()=>void send()}><Send size={14}/> Send</button></div></> }</div></section></div>
+}
