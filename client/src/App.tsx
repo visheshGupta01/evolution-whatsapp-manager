@@ -7,6 +7,11 @@ import { SendMessagePage } from './pages/SendMessagePage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { CampaignsPage } from './pages/CampaignsPage';
 import { AudiencesPage } from './pages/AudiencesPage';
+import { LeadsPage } from './pages/LeadsPage';
+import { LeadDetailPage } from './pages/LeadDetailPage';
+import { InboxPage } from './pages/InboxPage';
+import { AutomationsPage } from './pages/AutomationsPage';
+import { TeamPage, PermissionsPage, SettingsPage } from './pages/WorkspacePages';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
@@ -25,6 +30,13 @@ export function App() {
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/audiences" element={<AudiencesPage />} />
+        <Route path="/leads" element={<LeadsPage />} />
+        <Route path="/leads/:id" element={<LeadDetailPage />} />
+        <Route path="/inbox" element={<InboxPage />} />
+        <Route path="/automations" element={<AutomationsPage />} />
+        <Route path="/team" element={<TeamPage />} />
+        <Route path="/permissions" element={<PermissionsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/sessions" replace />} />
       </Routes></main>
       {createOpen && <CreateSessionModal close={() => setCreateOpen(false)} />}
