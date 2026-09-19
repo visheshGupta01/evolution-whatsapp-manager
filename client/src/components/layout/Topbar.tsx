@@ -8,6 +8,13 @@ const titles: Record<string, string> = {
   '/templates': 'Templates',
   '/campaigns': 'Campaigns',
   '/audiences': 'Audiences',
+  '/leads': 'Leads',
+  '/inbox': 'WhatsApp Inbox',
+  '/automations': 'Automations',
+  '/analytics': 'Analytics',
+  '/team': 'Team',
+  '/permissions': 'Permissions',
+  '/settings': 'Settings',
 };
 
 export function Topbar({ onRefresh, onAdd }: { onRefresh: () => void; onAdd: () => void }) {
