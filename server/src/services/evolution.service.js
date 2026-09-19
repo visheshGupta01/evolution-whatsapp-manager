@@ -236,6 +236,82 @@ export async function sendList(instance, number, payload) {
   return data;
 }
 
+export async function findChats(instance) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/findChats/${encodeURIComponent(instance)}`,
+    data: { where: {}, offset: 0, page: 1 },
+  });
+  return Array.isArray(data) ? data : data?.chats || data?.data || [];
+}
+
+export async function findMessages(instance, remoteJid, page = 1, offset = 50) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/findMessages/${encodeURIComponent(instance)}`,
+    data: {
+      where: { key: { remoteJid } },
+      offset: Math.max(1, Number(offset) || 50),
+      page: Math.max(1, Number(page) || 1),
+    },
+  });
+  return Array.isArray(data) ? data : data?.messages || data?.data || [];
+}
+
+export async function markMessageAsRead(instance, readMessages) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/markMessageAsRead/${encodeURIComponent(instance)}`,
+    data: { readMessages },
+  });
+  return data;
+}
+
+export async function sendReaction(instance, remoteJid, messageId, fromMe = false, reaction = '') {
+  const { data } = await request({
+    method: 'POST',
+    url: `/message/sendReaction/${encodeURIComponent(instance)}`,
+    data: { key: { remoteJid, id: messageId, fromMe }, reaction: String(reaction || '') },
+  });
+  return data;
+}
+
+export async function sendPresence(instance, number, presence = 'composing', delay = 1000) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/sendPresence/${encodeURIComponent(instance)}`,
+    data: { number: cleanNumber(number), presence, delay: Math.max(0, Number(delay) || 0) },
+  });
+  return data;
+}
+
+export async function archiveChat(instance, chat, archive) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/archiveChat/${encodeURIComponent(instance)}`,
+    data: { chat, archive: Boolean(archive) },
+  });
+  return data;
+}
+
+export async function deleteMessageForEveryone(instance, payload) {
+  const { data } = await request({
+    method: 'DELETE',
+    url: `/chat/deleteMessageForEveryone/${encodeURIComponent(instance)}`,
+    data: payload,
+  });
+  return data;
+}
+
+export async function updateMessage(instance, payload) {
+  const { data } = await request({
+    method: 'POST',
+    url: `/chat/updateMessage/${encodeURIComponent(instance)}`,
+    data: payload,
+  });
+  return data;
+}
+
 export async function deleteInstance(instance) {
   const { data } = await request({ method: 'DELETE', url: `/instance/delete/${encodeURIComponent(instance)}` });
   tokens.delete(instance);
