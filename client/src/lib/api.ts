@@ -48,12 +48,20 @@ function resolveApiBase() {
 const API = resolveApiBase();
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API}${path}`, { ...init, headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) } });
+  const token = localStorage.getItem('evo-auth-token');
+  const response = await fetch(`${API}${path}`, { ...init, headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) } });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.message || `Request failed (${response.status})`);
   return body as T;
 }
 export const apiConfig = { baseUrl: API };
+export type AuthUser = { id:string; email:string; role:'owner'|'member'; memberId:string|null; name:string; permissions:Record<string,boolean> };
+export const authApi = {
+  me:()=>request<AuthUser>('/auth/me'),
+  setup:(email:string,password:string)=>request<{token:string;user:AuthUser}>('/auth/setup',{method:'POST',body:JSON.stringify({email,password})}),
+  login:(email:string,password:string)=>request<{token:string;user:AuthUser}>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
+  logout:()=>request<void>('/auth/logout',{method:'POST'})
+};
 export const sessionsApi = {
   list: () => request<Session[]>('/sessions'),
   create: (instanceName: string) => request('/sessions', { method: 'POST', body: JSON.stringify({ instanceName }) }),
