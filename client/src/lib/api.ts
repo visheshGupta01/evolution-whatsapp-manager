@@ -99,6 +99,52 @@ export const templatesApi = {
   remove: (id: string) => request<void>(`/templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
+export type LeadActivity = { id:string; at:string; text:string };
+export type Lead = { id:string; name:string; phone:string; email:string; company:string; source:string; status:LeadStatus; tags:string[]; assignedTo:string|null; notes:string; createdAt:string; activity:LeadActivity[] };
+export type WorkspaceMember = { id:string; name:string; email:string; jobTitle:string; status:'active'|'invited'|'suspended'; permissions:Record<string,boolean>; createdAt:string };
+export type WorkspaceSettings = { workspaceName:string; ownerName:string; ownerEmail:string; whatsappNumber:string; timezone:string; notifyNewLead:boolean; notifyNewMessage:boolean };
+export type AutomationNode = { id:string; type:'trigger'|'condition'|'tag'|'delay'|'message'|'assign'; label:string; config:Record<string,string> };
+export type Automation = { id:string; name:string; status:'draft'|'active'|'paused'; nodes:AutomationNode[]; createdAt:string };
+export type InboxChat = { instance:string; remoteJid:string; name?:string; unreadCount?:number; lastText?:string; [key:string]:unknown };
+export type InboxMessage = { key?:{id?:string;remoteJid?:string;fromMe?:boolean}; message?:Record<string,any>; messageTimestamp?:number|string; pushName?:string; [key:string]:any };
+
+export const crmApi = {
+  listLeads:()=>request<Lead[]>('/crm/leads'),
+  getLead:(id:string)=>request<Lead>(`/crm/leads/${encodeURIComponent(id)}`),
+  createLead:(data:Omit<Lead,'id'|'createdAt'|'activity'>)=>request<Lead>('/crm/leads',{method:'POST',body:JSON.stringify(data)}),
+  updateLead:(id:string,data:Partial<Lead>&{activityText?:string})=>request<Lead>(`/crm/leads/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify(data)}),
+  removeLead:(id:string)=>request<void>(`/crm/leads/${encodeURIComponent(id)}`,{method:'DELETE'}),
+  stats:()=>request('/crm/stats')
+};
+export const workspaceApi = {
+  members:()=>request<WorkspaceMember[]>('/workspace/members'),
+  createMember:(data:Partial<WorkspaceMember>)=>request<WorkspaceMember>('/workspace/members',{method:'POST',body:JSON.stringify(data)}),
+  updateMember:(id:string,data:Partial<WorkspaceMember>)=>request<WorkspaceMember>(`/workspace/members/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify(data)}),
+  removeMember:(id:string)=>request<void>(`/workspace/members/${encodeURIComponent(id)}`,{method:'DELETE'}),
+  permissions:(id:string,permissions:Record<string,boolean>)=>request<Record<string,boolean>>(`/workspace/members/${encodeURIComponent(id)}/permissions`,{method:'PUT',body:JSON.stringify({permissions})}),
+  settings:()=>request<WorkspaceSettings>('/workspace/settings'),
+  updateSettings:(data:Partial<WorkspaceSettings>)=>request<WorkspaceSettings>('/workspace/settings',{method:'PUT',body:JSON.stringify(data)})
+};
+export const inboxApi = {
+  chats:(instance:string)=>request<InboxChat[]>(`/inbox/chats/${encodeURIComponent(instance)}`),
+  messages:(instance:string,remoteJid:string,page=1,offset=50)=>request<InboxMessage[]>(`/inbox/chats/${encodeURIComponent(instance)}/messages?remoteJid=${encodeURIComponent(remoteJid)}&page=${page}&offset=${offset}`),
+  sendText:(instance:string,number:string,text:string)=>request(`/inbox/chats/${encodeURIComponent(instance)}/send-text`,{method:'POST',body:JSON.stringify({number,text})}),
+  sendMedia:(instance:string,number:string,media:unknown,caption='')=>request(`/inbox/chats/${encodeURIComponent(instance)}/send-media`,{method:'POST',body:JSON.stringify({number,media,caption})}),
+  markRead:(instance:string,readMessages:unknown[])=>request(`/inbox/chats/${encodeURIComponent(instance)}/read`,{method:'POST',body:JSON.stringify({readMessages})}),
+  react:(instance:string,remoteJid:string,messageId:string,fromMe:boolean,reaction:string)=>request(`/inbox/chats/${encodeURIComponent(instance)}/reaction`,{method:'POST',body:JSON.stringify({remoteJid,messageId,fromMe,reaction})}),
+  presence:(instance:string,number:string,presence='composing')=>request(`/inbox/chats/${encodeURIComponent(instance)}/presence`,{method:'POST',body:JSON.stringify({number,presence,delay:1000})}),
+  archive:(instance:string,chat:string,archive:boolean)=>request(`/inbox/chats/${encodeURIComponent(instance)}/archive`,{method:'POST',body:JSON.stringify({chat,archive})}),
+  deleteMessage:(instance:string,messageId:string,remoteJid:string,fromMe=true)=>request(`/inbox/chats/${encodeURIComponent(instance)}/messages/${encodeURIComponent(messageId)}`,{method:'DELETE',body:JSON.stringify({remoteJid,fromMe})}),
+  updateMessage:(instance:string,messageId:string,payload:unknown)=>request(`/inbox/chats/${encodeURIComponent(instance)}/messages/${encodeURIComponent(messageId)}`,{method:'PATCH',body:JSON.stringify(payload)})
+};
+export const automationApi = {
+  list:()=>request<Automation[]>('/automations'),
+  create:(name:string)=>request<Automation>('/automations',{method:'POST',body:JSON.stringify({name})}),
+  update:(id:string,data:Partial<Automation>)=>request<Automation>(`/automations/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify(data)}),
+  remove:(id:string)=>request<void>(`/automations/${encodeURIComponent(id)}`,{method:'DELETE'})
+};
+
 export const campaignsApi = {
   sendText: (instance: string, text: string, recipients: CampaignRecipient[], delayMs = 1500) => request<CampaignResult>('/campaigns/text', { method: 'POST', body: JSON.stringify({ instance, text, recipients, delayMs }) }),
   sendMedia: (instance: string, media: CampaignMedia, caption: string, recipients: CampaignRecipient[], delayMs = 1500) => request<CampaignResult>('/campaigns/media', { method: 'POST', body: JSON.stringify({ instance, media, caption, recipients, delayMs }) }),
