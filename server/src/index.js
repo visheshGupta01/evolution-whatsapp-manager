@@ -13,6 +13,8 @@ import { initDatabase, closeDatabase } from './services/db.js';
 import { templatesRouter } from './routes/templates.routes.js';
 import { webhooksRouter } from './routes/webhooks.routes.js';
 import { audiencesRouter } from './routes/audiences.routes.js';
+import { crmRouter } from './routes/crm.routes.js';
+import { inboxRouter } from './routes/inbox.routes.js';
 
 assertConfiguration();
 await initDatabase();
@@ -32,6 +34,8 @@ app.use('/api/campaign-jobs', campaignJobsRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/audiences', audiencesRouter);
+app.use('/api/crm', crmRouter);
+app.use('/api/inbox', inboxRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, '../../client/dist');
