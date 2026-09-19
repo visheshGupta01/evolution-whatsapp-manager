@@ -12,6 +12,7 @@ import { LeadDetailPage } from './pages/LeadDetailPage';
 import { InboxPage } from './pages/InboxPage';
 import { AutomationsPage } from './pages/AutomationsPage';
 import { TeamPage, PermissionsPage, SettingsPage } from './pages/WorkspacePages';
+import { DashboardPage } from './pages/DashboardPage';
 import { CreateSessionModal } from './components/sessions/CreateSessionModal';
 import { useState } from 'react';
 import { useSessions } from './hooks/use-sessions';
@@ -24,7 +25,8 @@ export function App() {
     <AppShell>
       <Topbar onRefresh={() => void refetch()} onAdd={() => setCreateOpen(true)} />
       <main><Routes>
-        <Route path="/" element={<Navigate to="/sessions" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/sessions" element={<SessionsPage onCreate={() => setCreateOpen(true)} />} />
         <Route path="/send" element={<SendMessagePage />} />
         <Route path="/templates" element={<TemplatesPage />} />
