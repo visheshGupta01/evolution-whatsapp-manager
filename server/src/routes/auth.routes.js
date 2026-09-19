@@ -11,7 +11,7 @@ const makeId=(p)=>p+'_'+Date.now().toString(36)+'_'+crypto.randomBytes(5).toStri
 
 export async function authUser(req,res,next){
   try{
-    const raw=String(req.headers.authorization||'').replace(/^Bearers+/i,'').trim();
+    const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
     if(!raw)return res.status(401).json({ok:false,message:'Authentication required.'});
     const r=await pool.query(`SELECT u.id,u.email,u.role,u.status,u.member_id,m.name,m.permissions
       FROM auth_sessions s JOIN app_users u ON u.id=s.user_id LEFT JOIN members m ON m.id=u.member_id
