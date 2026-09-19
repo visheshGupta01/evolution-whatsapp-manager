@@ -68,6 +68,62 @@ export async function initDatabase() {
       PRIMARY KEY (audience_id, recipient_index)
     );
     CREATE INDEX IF NOT EXISTS audience_recipients_phone_idx ON audience_recipients(audience_id, phone);
+    CREATE TABLE IF NOT EXISTS leads (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
+      company TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'Other',
+      status TEXT NOT NULL DEFAULT 'new', tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+      assigned_to TEXT, notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status);
+    CREATE INDEX IF NOT EXISTS leads_phone_idx ON leads(phone);
+    CREATE TABLE IF NOT EXISTS lead_activity (
+      id TEXT PRIMARY KEY, lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      text TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS lead_activity_lead_idx ON lead_activity(lead_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS members (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL DEFAULT '',
+      job_title TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'active',
+      permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS workspace_settings (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY, instance TEXT NOT NULL, lead_id TEXT REFERENCES leads(id) ON DELETE SET NULL,
+      remote_jid TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+      assigned_to TEXT, unread_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(instance, remote_jid)
+    );
+    CREATE INDEX IF NOT EXISTS conversations_instance_updated_idx ON conversations(instance, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      instance TEXT NOT NULL, remote_jid TEXT NOT NULL, from_me BOOLEAN NOT NULL DEFAULT false,
+      text TEXT NOT NULL DEFAULT '', message_type TEXT NOT NULL DEFAULT 'text',
+      media JSONB, raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+      status TEXT, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(instance, id)
+    );
+    CREATE INDEX IF NOT EXISTS messages_conversation_time_idx ON messages(conversation_id, timestamp);
+    CREATE INDEX IF NOT EXISTS messages_instance_jid_idx ON messages(instance, remote_jid, timestamp DESC);
+
+    CREATE TABLE IF NOT EXISTS automations (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS automation_nodes (
+      id TEXT PRIMARY KEY, automation_id TEXT NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+      node_index INTEGER NOT NULL, type TEXT NOT NULL, label TEXT NOT NULL, config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      UNIQUE(automation_id, node_index)
+    );
+    CREATE INDEX IF NOT EXISTS automation_nodes_order_idx ON automation_nodes(automation_id, node_index);
   `);
   await migrateLegacyCampaigns();
 }
