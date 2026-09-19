@@ -16,6 +16,8 @@ import { audiencesRouter } from './routes/audiences.routes.js';
 import { crmRouter } from './routes/crm.routes.js';
 import { inboxRouter } from './routes/inbox.routes.js';
 import { automationRouter } from './routes/automation.routes.js';
+import { authRouter } from './routes/auth.routes.js';
+import { workspaceRouter } from './routes/workspace.routes.js';
 
 assertConfiguration();
 await initDatabase();
@@ -28,6 +30,7 @@ app.get('/api', (_req, res) => res.json({
   version: '1.7.0',
   features: { sessions: true, textCampaigns: true, mediaCampaigns: true, interactiveCampaigns: true, persistentCampaigns: true },
 }));
+app.use('/api/auth', authRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/campaigns', campaignsRouter);
@@ -38,6 +41,7 @@ app.use('/api/audiences', audiencesRouter);
 app.use('/api/crm', crmRouter);
 app.use('/api/inbox', inboxRouter);
 app.use('/api/automations', automationRouter);
+app.use('/api/workspace', workspaceRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, '../../client/dist');
